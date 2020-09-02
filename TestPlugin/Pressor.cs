@@ -51,8 +51,30 @@ namespace TestPlugin
             throw new ArgumentOutOfRangeException($"Current ENUM ${nameof(ECompPhase)} state ({CurrentPhase}) if unreacheble");
         }
 
-        private float Threshold => DBFSConvert.FromDBFS(-_thresholdMgr.CurrentValue);
-        private float Ratio => _ratioMgr.CurrentValue; 
+        private float _sampleDb;
+        private float SampleDb
+        {
+            get
+            {
+                return _sampleDb;
+            }
+            set
+            {
+                _sampleDb = DBFSConvert.LinToDb(Math.Abs(value));
+            }
+        }
+        
+        /// <summary>
+        /// Threshold in -DbFS
+        /// </summary>
+        private float Threshold => DBFSConvert.LinToDb(_thresholdMgr.CurrentValue);
+
+        private float ThresholdLin => _thresholdMgr.CurrentValue;
+
+        /// <summary>
+        /// In units
+        /// </summary>
+        private float Ratio => Math.Abs((int)DBFSConvert.LinToDb(_ratioMgr.CurrentValue));
         private float Ra
         {
             get
@@ -86,6 +108,8 @@ namespace TestPlugin
         private float Attack => (float)Math.Round(_attackMgr.CurrentValue / 1000 * SampleRate);
         private float Release => (float)Math.Round(_releaseMgr.CurrentValue / 1000 * SampleRate);
 
+        private float AttackCoef => (float)Math.Exp(-Math.Log(9.0f)/(SampleRate * _attackMgr.CurrentValue));
+        private float ReleaseCoef => (float)Math.Exp(-Math.Log(9.0f)/(SampleRate * _releaseMgr.CurrentValue));
 
         /// <summary>
         /// Set of parameters for the plugin
@@ -110,11 +134,11 @@ namespace TestPlugin
                 Label = "Threshold",
                 ShortLabel = "dbs",
                 MinInteger = 0,
-                MaxInteger = 60,
-                SmallStepFloat = 1f,
-                StepFloat = 1f,
-                LargeStepFloat = 3f,
-                DefaultValue = 15f,
+                MaxInteger = 1,
+                SmallStepFloat = 0.01f,
+                StepFloat = 0.05f,
+                LargeStepFloat = 0.1f,
+                DefaultValue = DBFSConvert.DbToLin(-9),
             };
 
             _thresholdMgr = paramInfo
@@ -129,12 +153,12 @@ namespace TestPlugin
                 Name = "Ratio",
                 Label = "Ratio",
                 ShortLabel = ":1",
-                MinInteger = 1,
-                MaxInteger = 60,
-                SmallStepFloat = 1f,
-                StepFloat = 3f,
-                LargeStepFloat = 5f,
-                DefaultValue = 4f,
+                MinInteger = 0,
+                MaxInteger = 1,
+                SmallStepFloat = 0.01f,
+                StepFloat = 0.05f,
+                LargeStepFloat = 0.1f,
+                DefaultValue = DBFSConvert.DbToLin(-4),
             };
 
             _ratioMgr = paramInfo
@@ -149,7 +173,7 @@ namespace TestPlugin
                 Name = "Attack",
                 Label = "Attack",
                 ShortLabel = "ms",
-                MinInteger = 0,
+                MinInteger = 1,
                 MaxInteger = 1000,
                 SmallStepFloat = 1f,
                 StepFloat = 20f,
@@ -169,7 +193,7 @@ namespace TestPlugin
                 Name = "Release",
                 Label = "Release",
                 ShortLabel = "ms",
-                MinInteger = 0,
+                MinInteger = 1,
                 MaxInteger = 1000,
                 SmallStepFloat = 1f,
                 StepFloat = 20f,
@@ -189,6 +213,7 @@ namespace TestPlugin
             sampleSign * (((sampleAbs - Threshold) / CountPhaseRatio()) + Threshold);
 
 
+
         public void ProcessChannel(VstAudioBuffer inBuffer, VstAudioBuffer outBuffer)
         {
             for (var i = 0; i < inBuffer.SampleCount; i++)
@@ -196,56 +221,96 @@ namespace TestPlugin
                 var sample = inBuffer[i];
 
                 if (sample == 0)
-                    return;
+                {
+                    outBuffer[i] = 0;
+                    continue;
+                }
+
+                else if (sample > 1)
+                    sample = 1f;
+                
+                else if (sample < -1f)
+                    sample = -1f;
+                
 
                 var sampleAbs = Math.Abs(sample);
+
                 var sampleSign = sample >= 0 ? 1 : -1;
 
-                _sampleCount++;
+                //SampleDb = sample;
 
-                if (CurrentPhase == ECompPhase.Bypass)
+                //CurrentPhase = ECompPhase.Compress;
+
+                //var procSampleDb = Threshold + ((SampleDb - Threshold) / Ratio);
+
+                //var tempRes = Math.Abs(DBFSConvert.DbToLin(procSampleDb)) * sampleSign;
+
+                if (sampleAbs <= ThresholdLin)
                 {
-                    if (sampleAbs > Threshold)
-                        CurrentPhase = ECompPhase.Attack;
-                    else
-                    {
-                        outBuffer[i] = sample;
-                        continue;
-                    }
-                }
-                else if (CurrentPhase == ECompPhase.Attack)
-                {
-                    if (_attackSamplesPassed == Attack)
-                    {
-                        CurrentPhase = ECompPhase.Compress;
-                        _attackSamplesPassed = 0;
-                    }
-                    else
-                        _attackSamplesPassed++;
-                }
-                else if (CurrentPhase == ECompPhase.Compress)
-                {
-                    if (sampleAbs < Threshold)
-                    {
-                        CurrentPhase = ECompPhase.Release;
-                        _releaseSamplesHandled = 0;
-                    }
-                }
-                else if (CurrentPhase == ECompPhase.Release)
-                {
-                    if (sampleAbs > Threshold)
-                    {
-                        CurrentPhase = ECompPhase.Compress;
-                        _releaseSamplesHandled = 0;
-                    }
-                    else
-                        _releaseSamplesHandled++;
+                    outBuffer[i] = sample;
+                    continue;
                 }
 
-                var processedSample = ProcessSample(sampleAbs, sampleSign);
-                outBuffer[i] = processedSample;
+                var procSmpl = ThresholdLin + (sampleAbs - ThresholdLin) / Ratio;
+
+                var tempRes = procSmpl * sampleSign;
+
+                outBuffer[i] = tempRes;
+
+                //_sampleCount++;
+
+                //if (CurrentPhase == ECompPhase.Bypass)
+                //{
+                //    if (sampleAbs > Threshold)
+                //        CurrentPhase = ECompPhase.Attack;
+                //    else
+                //    {
+                //        outBuffer[i] = sample;
+                //        continue;
+                //    }
+                //}
+                //else if (CurrentPhase == ECompPhase.Attack)
+                //{
+                //    if (_attackSamplesPassed == Attack)
+                //    {
+                //        CurrentPhase = ECompPhase.Compress;
+                //        _attackSamplesPassed = 0;
+                //    }
+                //    else
+                //        _attackSamplesPassed++;
+                //}
+                //else if (CurrentPhase == ECompPhase.Compress)
+                //{
+                //    if (sampleAbs < Threshold)
+                //    {
+                //        CurrentPhase = ECompPhase.Release;
+                //        _releaseSamplesHandled = 0;
+                //    }
+                //}
+                //else if (CurrentPhase == ECompPhase.Release)
+                //{
+                //    if (sampleAbs > Threshold)
+                //    {
+                //        CurrentPhase = ECompPhase.Compress;
+                //        _releaseSamplesHandled = 0;
+                //    }
+                //    else
+                //    {
+                //        _releaseSamplesHandled++;
+                //        if (_releaseSamplesHandled == Release)
+                //        {
+                //            CurrentPhase = ECompPhase.Bypass;
+                //            _releaseSamplesHandled = 0;
+                //        }
+                //    }
+                //}
+
+                //var processedSample = ProcessSample(sampleAbs, sampleSign);
+
+                //var coef = Threshold + (sampleAbs - Threshold) * (1 / DBFSConvert.DbToLin(-Ratio));
+
+                //outBuffer[i] = (float)(sample * coef);
             }
         }
-
     }
 }

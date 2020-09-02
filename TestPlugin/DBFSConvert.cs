@@ -36,29 +36,29 @@ namespace TestPlugin
         /// <summary>
         /// Exponential scale convertion to Dbs
         /// </summary>
-        /// <param name="volume"></param>
+        /// <param name="val"></param>
         /// <returns></returns>
-        public static float ToDBFS(float volume) => (float) Math.Log(volume) * _dbfsCoef;
+        public static float LinToDb(float val) => (float) (20 * Math.Log10(val));
 
         /// <summary>
         /// From Dbs to exponential scale
         /// </summary>
         /// <param name="dbfs"></param>
         /// <returns></returns>
-        public static float FromDBFS(float dbfs) => (float) Math.Exp(dbfs / _dbfsCoef);
+        public static float DbToLin(float dbfs) => (float) Math.Pow(10, 0.05 * dbfs);
 
         /// <summary>
         /// Calculates scale position from dbs spl (-60 == 0)
         /// </summary>
         /// <param name="db">Dbs from 0 to -60</param>
         /// <returns>Scale position from 0 to 1</returns>
-        public static float DbSplToScalePartition(float db) => FromExpanent(FromDBFS(db));
+        public static float DbSplToScalePartition(float db) => FromExpanent(DbToLin(db));
 
         /// <summary>
         /// Converts scale position (from 0 to 1) to -Dbs from maximum loudness
         /// </summary>
         /// <param name="pos">Position (from 0 to 1)</param>
         /// <returns>-Dbs from maximum loudness</returns>
-        public static float FromScaleToDbSpl(float pos) => ToDBFS(ToExpanent(pos));
+        public static float FromScaleToDbSpl(float pos) => LinToDb(ToExpanent(pos));
     }
 }
