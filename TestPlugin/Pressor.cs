@@ -22,94 +22,81 @@ namespace TestPlugin
         private int _releaseSamplesHandled;
 
 
-        private VstParameterManager _thresholdMgr;
-        private VstParameterManager _ratioMgr;
-        private VstParameterManager _attackMgr;
-        private VstParameterManager _releaseMgr;
-
         private ECompPhase CurrentPhase = ECompPhase.Bypass;
 
         private float CountPhaseRatio()
         {
-            if (CurrentPhase == ECompPhase.Bypass || CurrentPhase == ECompPhase.Compress)
-                return Ratio;
-            else if (CurrentPhase == ECompPhase.Attack)
-            {
-                if (_attackSamplesPassed == 0)
-                    return 1f;
-                else 
-                    return Ratio / Ra;
-            }
-            else if (CurrentPhase == ECompPhase.Release)
-            {
-                if (_releaseSamplesHandled == 0)
-                    return 1f; 
-                else
-                    return Ratio / Rr;
-            }
+            //if (CurrentPhase == ECompPhase.Bypass || CurrentPhase == ECompPhase.Compress)
+            //    return Ratio;
+            //else if (CurrentPhase == ECompPhase.Attack)
+            //{
+            //    if (_attackSamplesPassed == 0)
+            //        return 1f;
+            //    else 
+            //        return Ratio / Ra;
+            //}
+            //else if (CurrentPhase == ECompPhase.Release)
+            //{
+            //    if (_releaseSamplesHandled == 0)
+            //        return 1f; 
+            //    else
+            //        return Ratio / Rr;
+            //}
 
             throw new ArgumentOutOfRangeException($"Current ENUM ${nameof(ECompPhase)} state ({CurrentPhase}) if unreacheble");
         }
 
-        private float _sampleDb;
-        private float SampleDb
-        {
-            get
-            {
-                return _sampleDb;
-            }
-            set
-            {
-                _sampleDb = DBFSConvert.LinToDb(Math.Abs(value));
-            }
-        }
+        private Sample Sample { get; set; }
+
+        private PressorParams Params { get; set; }
         
-        /// <summary>
-        /// Threshold in -DbFS
-        /// </summary>
-        private float Threshold => DBFSConvert.LinToDb(_thresholdMgr.CurrentValue);
+        ///// <summary>
+        ///// Threshold in -DbFS
+        ///// </summary>
+        //private float Threshold => DBFSConvert.LinToDb(_thresholdMgr.CurrentValue);
 
-        private float ThresholdLin => _thresholdMgr.CurrentValue;
+        //private float ThresholdLin => _thresholdMgr.CurrentValue;
 
-        /// <summary>
-        /// In units
-        /// </summary>
-        private float Ratio => Math.Abs((int)DBFSConvert.LinToDb(_ratioMgr.CurrentValue));
-        private float Ra
-        {
-            get
-            {
-                if (_attackSamplesPassed != Attack)
-                {
-                    return 1 - _attackSamplesPassed / Attack;
-                }
-                else
-                {
-                    return 1f;
-                }
-            }
-        }
+        ///// <summary>
+        ///// In units
+        ///// </summary>
+        //private float Ratio => Math.Abs((int)DBFSConvert.LinToDb(_ratioMgr.CurrentValue));
 
-        private float Rr
-        {
-            get
-            {
-                if (_releaseSamplesHandled != Release)
-                {
-                    return 1 - _releaseSamplesHandled / Release;
-                }
-                else
-                {
-                    return 1f;
-                }
-            }
-        }
+        ////private float Ra
+        ////{
+        ////    get
+        ////    {
+        ////        if (_attackSamplesPassed != Attack)
+        ////        {
+        ////            return 1 - _attackSamplesPassed / Attack;
+        ////        }
+        ////        else
+        ////        {
+        ////            return 1f;
+        ////        }
+        ////    }
+        ////}
 
-        private float Attack => (float)Math.Round(_attackMgr.CurrentValue / 1000 * SampleRate);
-        private float Release => (float)Math.Round(_releaseMgr.CurrentValue / 1000 * SampleRate);
+        ////private float Rr
+        ////{
+        ////    get
+        ////    {
+        ////        if (_releaseSamplesHandled != Release)
+        ////        {
+        ////            return 1 - _releaseSamplesHandled / Release;
+        ////        }
+        ////        else
+        ////        {
+        ////            return 1f;
+        ////        }
+        ////    }
+        ////}
 
-        private float AttackCoef => (float)Math.Exp(-Math.Log(9.0f)/(SampleRate * _attackMgr.CurrentValue));
-        private float ReleaseCoef => (float)Math.Exp(-Math.Log(9.0f)/(SampleRate * _releaseMgr.CurrentValue));
+        //private float Attack => (float)Math.Round(_attackMgr.CurrentValue / 1000 * SampleRate);
+        //private float Release => (float)Math.Round(_releaseMgr.CurrentValue / 1000 * SampleRate);
+
+        //private float AttackCoef => (float)Math.Exp(-Math.Log(9.0f)/(SampleRate * _attackMgr.CurrentValue));
+        //private float ReleaseCoef => (float)Math.Exp(-Math.Log(9.0f)/(SampleRate * _releaseMgr.CurrentValue));
 
         /// <summary>
         /// Set of parameters for the plugin
@@ -127,47 +114,46 @@ namespace TestPlugin
 
             #region params
 
-            var paramInfo = new VstParameterInfo
+            var threshInfo = new VstParameterInfo
             {
                 CanBeAutomated = true,
                 Name = "Thrshld",
                 Label = "Threshold",
-                ShortLabel = "dbs",
+                ShortLabel = "lin2dbs",
                 MinInteger = 0,
-                MaxInteger = 1,
-                SmallStepFloat = 0.01f,
-                StepFloat = 0.05f,
-                LargeStepFloat = 0.1f,
+                MaxInteger = 60,
+                SmallStepFloat = 0.1f,
+                StepFloat = 1f,
+                LargeStepFloat = 3f,
                 DefaultValue = DBFSConvert.DbToLin(-9),
             };
 
-            _thresholdMgr = paramInfo
-                .Normalize()
-                .ToManager();
+            //var threshMgr = threshInfo
+            //    .Normalize()
+            //    .ToManager();
 
-            ParameterInfos.Add(paramInfo);
+            ParameterInfos.Add(threshInfo);
             
-            paramInfo = new VstParameterInfo
+            var ratInfo = new VstParameterInfo
             {
                 CanBeAutomated = true,
                 Name = "Ratio",
                 Label = "Ratio",
                 ShortLabel = ":1",
-                MinInteger = 0,
-                MaxInteger = 1,
-                SmallStepFloat = 0.01f,
-                StepFloat = 0.05f,
-                LargeStepFloat = 0.1f,
-                DefaultValue = DBFSConvert.DbToLin(-4),
+                MinInteger = 1,
+                MaxInteger = 60,
+                StepInteger = 1,
+                LargeStepInteger = 3,
+                DefaultValue = 4f,
             };
 
-            _ratioMgr = paramInfo
-                .Normalize()
-                .ToManager();
+            //_ratioMgr = ratInfo
+            //    .Normalize()
+            //    .ToManager();
 
-            ParameterInfos.Add(paramInfo);
+            ParameterInfos.Add(ratInfo);
 
-            paramInfo = new VstParameterInfo
+            var attInfo = new VstParameterInfo
             {
                 CanBeAutomated = true,
                 Name = "Attack",
@@ -175,19 +161,18 @@ namespace TestPlugin
                 ShortLabel = "ms",
                 MinInteger = 1,
                 MaxInteger = 1000,
-                SmallStepFloat = 1f,
-                StepFloat = 20f,
-                LargeStepFloat = 100f,
+                StepInteger = 1,
+                LargeStepInteger = 10,
                 DefaultValue = 50f,
             };
 
-            _attackMgr = paramInfo
-                .Normalize()
-                .ToManager();
+            //_attackMgr = paramInfo
+            //    .Normalize()
+            //    .ToManager();
 
-            ParameterInfos.Add(paramInfo);
+            ParameterInfos.Add(attInfo);
 
-            paramInfo = new VstParameterInfo
+            var relInfo = new VstParameterInfo
             {
                 CanBeAutomated = true,
                 Name = "Release",
@@ -195,122 +180,84 @@ namespace TestPlugin
                 ShortLabel = "ms",
                 MinInteger = 1,
                 MaxInteger = 1000,
-                SmallStepFloat = 1f,
-                StepFloat = 20f,
-                LargeStepFloat = 100f,
+                StepInteger = 1,
+                LargeStepInteger = 10,
                 DefaultValue = 50f,
             };
 
-            _releaseMgr = paramInfo
-                .Normalize()
-                .ToManager();
+            //_releaseMgr = paramInfo
+            //    .Normalize()
+            //    .ToManager();
 
-            ParameterInfos.Add(paramInfo);
+            ParameterInfos.Add(relInfo);
+
+            Params = new PressorParams(threshInfo, ratInfo, attInfo, relInfo);
 
             #endregion
         }
-        private float ProcessSample(float sampleAbs, int sampleSign) => 
-            sampleSign * (((sampleAbs - Threshold) / CountPhaseRatio()) + Threshold);
-
-
-
+        
         public void ProcessChannel(VstAudioBuffer inBuffer, VstAudioBuffer outBuffer)
         {
             for (var i = 0; i < inBuffer.SampleCount; i++)
             {
-                var sample = inBuffer[i];
-
-                if (sample == 0)
-                {
-                    outBuffer[i] = 0;
+                if (inBuffer[i] == 0)
                     continue;
-                }
 
-                else if (sample > 1)
-                    sample = 1f;
-                
-                else if (sample < -1f)
-                    sample = -1f;
-                
+                Sample = new Sample(inBuffer[i]);
 
-                var sampleAbs = Math.Abs(sample);
-
-                var sampleSign = sample >= 0 ? 1 : -1;
-
-                //SampleDb = sample;
-
-                //CurrentPhase = ECompPhase.Compress;
-
-                //var procSampleDb = Threshold + ((SampleDb - Threshold) / Ratio);
-
-                //var tempRes = Math.Abs(DBFSConvert.DbToLin(procSampleDb)) * sampleSign;
-
-                if (sampleAbs <= ThresholdLin)
-                {
-                    outBuffer[i] = sample;
+                if (Sample.IsZero || !Sample.IsAbove(Params.Threshold))
                     continue;
-                }
 
-                var procSmpl = ThresholdLin + (sampleAbs - ThresholdLin) / Ratio;
-
-                var tempRes = procSmpl * sampleSign;
-
-                outBuffer[i] = tempRes;
-
-                //_sampleCount++;
-
-                //if (CurrentPhase == ECompPhase.Bypass)
-                //{
-                //    if (sampleAbs > Threshold)
-                //        CurrentPhase = ECompPhase.Attack;
-                //    else
-                //    {
-                //        outBuffer[i] = sample;
-                //        continue;
-                //    }
-                //}
-                //else if (CurrentPhase == ECompPhase.Attack)
-                //{
-                //    if (_attackSamplesPassed == Attack)
-                //    {
-                //        CurrentPhase = ECompPhase.Compress;
-                //        _attackSamplesPassed = 0;
-                //    }
-                //    else
-                //        _attackSamplesPassed++;
-                //}
-                //else if (CurrentPhase == ECompPhase.Compress)
-                //{
-                //    if (sampleAbs < Threshold)
-                //    {
-                //        CurrentPhase = ECompPhase.Release;
-                //        _releaseSamplesHandled = 0;
-                //    }
-                //}
-                //else if (CurrentPhase == ECompPhase.Release)
-                //{
-                //    if (sampleAbs > Threshold)
-                //    {
-                //        CurrentPhase = ECompPhase.Compress;
-                //        _releaseSamplesHandled = 0;
-                //    }
-                //    else
-                //    {
-                //        _releaseSamplesHandled++;
-                //        if (_releaseSamplesHandled == Release)
-                //        {
-                //            CurrentPhase = ECompPhase.Bypass;
-                //            _releaseSamplesHandled = 0;
-                //        }
-                //    }
-                //}
-
-                //var processedSample = ProcessSample(sampleAbs, sampleSign);
-
-                //var coef = Threshold + (sampleAbs - Threshold) * (1 / DBFSConvert.DbToLin(-Ratio));
-
-                //outBuffer[i] = (float)(sample * coef);
+                outBuffer[i] = Sample.Compress(Params.Threshold, Params.Ratio).Value;
             }
         }
+    }
+    internal struct Sample
+    {
+        public Sample(float sample)
+        {
+            Value = (sample > 1)
+                ? 1
+                : (sample < -1)
+                    ? -1
+                    : sample
+                ;
+            Abs = Math.Abs(Value);
+            Sign = (Value < 0) ? -1 : 1;
+        }
+
+
+        public float Value { get; private set; }
+        public float Sign { get; }
+        public float Abs { get; private set; }
+
+        public bool IsAbove(float threshold) => Abs > threshold;
+        public bool IsZero => Value == 0;
+
+        public Sample Compress(float thresh, float ratio)
+        {
+            Abs = thresh + (Abs - thresh) / ratio;
+            Value = Abs * Sign;
+            return this;
+        }
+    }
+    internal class PressorParams
+    {
+        private VstParameterManager _thresholdMgr;
+        private VstParameterManager _ratioMgr;
+        private VstParameterManager _attackMgr;
+        private VstParameterManager _releaseMgr;
+
+        public PressorParams(VstParameterInfo trshInfo, VstParameterInfo ratInfo,
+                            VstParameterInfo attInfo, VstParameterInfo relInfo) 
+        {
+            _thresholdMgr = trshInfo.Normalize().ToManager();
+            _ratioMgr = ratInfo.Normalize().ToManager();
+            _attackMgr = attInfo.Normalize().ToManager();
+            _releaseMgr = relInfo.Normalize().ToManager();
+        }
+
+        public float Threshold { get => DBFSConvert.DbToLin(-_thresholdMgr.CurrentValue); }
+        public float Ratio { get => _ratioMgr.CurrentValue; }
     }
 }
