@@ -3,12 +3,13 @@ using Jacobi.Vst.Plugin.Framework;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Reflection.Metadata;
 using System.Runtime.InteropServices.ComTypes;
 using System.Threading;
 
 namespace TestPlugin
 {
-    internal enum ECompPhase
+    public enum ECompState
     {
         Bypass,
         Attack, 
@@ -17,86 +18,13 @@ namespace TestPlugin
     }
     internal sealed class Pressor
     {
-        private int _sampleCount;
-        private int _attackSamplesPassed;
-        private int _releaseSamplesHandled;
-
-
-        private ECompPhase CurrentPhase = ECompPhase.Bypass;
-
-        private float CountPhaseRatio()
-        {
-            //if (CurrentPhase == ECompPhase.Bypass || CurrentPhase == ECompPhase.Compress)
-            //    return Ratio;
-            //else if (CurrentPhase == ECompPhase.Attack)
-            //{
-            //    if (_attackSamplesPassed == 0)
-            //        return 1f;
-            //    else 
-            //        return Ratio / Ra;
-            //}
-            //else if (CurrentPhase == ECompPhase.Release)
-            //{
-            //    if (_releaseSamplesHandled == 0)
-            //        return 1f; 
-            //    else
-            //        return Ratio / Rr;
-            //}
-
-            throw new ArgumentOutOfRangeException($"Current ENUM ${nameof(ECompPhase)} state ({CurrentPhase}) if unreacheble");
-        }
-
-        private Sample Sample { get; set; }
+        private ICompDetector _detector;
+        private IGainProcessor _gainProcessor;
+        private Sample _sample;
+        private float _sampleRate;
 
         private PressorParams Params { get; set; }
         
-        ///// <summary>
-        ///// Threshold in -DbFS
-        ///// </summary>
-        //private float Threshold => DBFSConvert.LinToDb(_thresholdMgr.CurrentValue);
-
-        //private float ThresholdLin => _thresholdMgr.CurrentValue;
-
-        ///// <summary>
-        ///// In units
-        ///// </summary>
-        //private float Ratio => Math.Abs((int)DBFSConvert.LinToDb(_ratioMgr.CurrentValue));
-
-        ////private float Ra
-        ////{
-        ////    get
-        ////    {
-        ////        if (_attackSamplesPassed != Attack)
-        ////        {
-        ////            return 1 - _attackSamplesPassed / Attack;
-        ////        }
-        ////        else
-        ////        {
-        ////            return 1f;
-        ////        }
-        ////    }
-        ////}
-
-        ////private float Rr
-        ////{
-        ////    get
-        ////    {
-        ////        if (_releaseSamplesHandled != Release)
-        ////        {
-        ////            return 1 - _releaseSamplesHandled / Release;
-        ////        }
-        ////        else
-        ////        {
-        ////            return 1f;
-        ////        }
-        ////    }
-        ////}
-
-        //private float Attack => (float)Math.Round(_attackMgr.CurrentValue / 1000 * SampleRate);
-        //private float Release => (float)Math.Round(_releaseMgr.CurrentValue / 1000 * SampleRate);
-
-        //private float AttackCoef => (float)Math.Exp(-Math.Log(9.0f)/(SampleRate * _attackMgr.CurrentValue));
-        //private float ReleaseCoef => (float)Math.Exp(-Math.Log(9.0f)/(SampleRate * _releaseMgr.CurrentValue));
 
         /// <summary>
         /// Set of parameters for the plugin
@@ -106,7 +34,13 @@ namespace TestPlugin
         /// <summary>
         /// Gets or sets the sample rate.
         /// </summary>
-        public float SampleRate { get; set; }
+        public float SampleRate {
+            get => _sampleRate;
+            set {
+                _sampleRate = value;
+                Params.SetSampleRate(value);
+            } 
+        }
 
         public Pressor()
         {
@@ -128,10 +62,6 @@ namespace TestPlugin
                 DefaultValue = DBFSConvert.DbToLin(-9),
             };
 
-            //var threshMgr = threshInfo
-            //    .Normalize()
-            //    .ToManager();
-
             ParameterInfos.Add(threshInfo);
             
             var ratInfo = new VstParameterInfo
@@ -146,10 +76,6 @@ namespace TestPlugin
                 LargeStepInteger = 3,
                 DefaultValue = 4f,
             };
-
-            //_ratioMgr = ratInfo
-            //    .Normalize()
-            //    .ToManager();
 
             ParameterInfos.Add(ratInfo);
 
@@ -166,15 +92,12 @@ namespace TestPlugin
                 DefaultValue = 50f,
             };
 
-            //_attackMgr = paramInfo
-            //    .Normalize()
-            //    .ToManager();
-
             ParameterInfos.Add(attInfo);
 
             var relInfo = new VstParameterInfo
             {
                 CanBeAutomated = true,
+                CanRamp = true,
                 Name = "Release",
                 Label = "Release",
                 ShortLabel = "ms",
@@ -185,15 +108,14 @@ namespace TestPlugin
                 DefaultValue = 50f,
             };
 
-            //_releaseMgr = paramInfo
-            //    .Normalize()
-            //    .ToManager();
-
             ParameterInfos.Add(relInfo);
 
-            Params = new PressorParams(threshInfo, ratInfo, attInfo, relInfo);
-
             #endregion
+
+            Params = new PressorParams(SampleRate, threshInfo, ratInfo, attInfo, relInfo);
+
+            _detector = new Detector(Params);
+            _gainProcessor = new GainProcessor(Params);
         }
         
         public void ProcessChannel(VstAudioBuffer inBuffer, VstAudioBuffer outBuffer)
@@ -203,61 +125,174 @@ namespace TestPlugin
                 if (inBuffer[i] == 0)
                     continue;
 
-                Sample = new Sample(inBuffer[i]);
+                _sample = new Sample(inBuffer[i]);
 
-                if (Sample.IsZero || !Sample.IsAbove(Params.Threshold))
+                _detector.UpdateState(_sample);
+
+                if (Params.State == ECompState.Bypass)
                     continue;
 
-                outBuffer[i] = Sample.Compress(Params.Threshold, Params.Ratio).Value;
+                outBuffer[i] = _gainProcessor.Process(_sample).Value;
             }
         }
     }
-    internal struct Sample
+
+    public interface IGainProcessor
     {
-        public Sample(float sample)
+        Sample Process(Sample sample);
+    }
+
+    internal class GainProcessor : IGainProcessor
+    {
+        private readonly PressorParams _params;
+
+        public GainProcessor(PressorParams @params)
         {
-            Value = (sample > 1)
-                ? 1
-                : (sample < -1)
-                    ? -1
-                    : sample
-                ;
-            Abs = Math.Abs(Value);
-            Sign = (Value < 0) ? -1 : 1;
+            _params = @params;
         }
 
-
-        public float Value { get; private set; }
-        public float Sign { get; }
-        public float Abs { get; private set; }
-
-        public bool IsAbove(float threshold) => Abs > threshold;
-        public bool IsZero => Value == 0;
-
-        public Sample Compress(float thresh, float ratio)
+        public Sample Process(Sample sample)
         {
-            Abs = thresh + (Abs - thresh) / ratio;
-            Value = Abs * Sign;
-            return this;
+            var fixedRatio = (_params.State == ECompState.Attack) 
+                ? _params.Ratio * _params.AttackCoef
+                : (_params.State == ECompState.Release)
+                    ? _params.Ratio * _params.ReleaseCoef
+                    : _params.Ratio;
+
+            if (fixedRatio < 1)
+                fixedRatio = 1;
+
+            // TODO: Fix this formula - this does not work well with wide range samples 
+            // from release and attack state - change sample sign and so on
+            // Need to divide parameters and create some range of valid values
+            sample.Abs = sample.Abs >= _params.Threshold
+                ? _params.Threshold + (sample.Abs - _params.Threshold) / fixedRatio
+                : sample.Abs - (_params.Threshold - sample.Abs) / fixedRatio;
+            
+            _params.SampleHandled();
+
+            return sample;
         }
     }
-    internal class PressorParams
+
+    public class PressorParams
     {
+        private int _attackCounter;
+        private int _releaseCounter;
+        private float _sampleRate;
+
         private VstParameterManager _thresholdMgr;
         private VstParameterManager _ratioMgr;
         private VstParameterManager _attackMgr;
         private VstParameterManager _releaseMgr;
 
-        public PressorParams(VstParameterInfo trshInfo, VstParameterInfo ratInfo,
+
+        public PressorParams(float sampleRate, VstParameterInfo trshInfo, VstParameterInfo ratInfo,
                             VstParameterInfo attInfo, VstParameterInfo relInfo) 
         {
+            _sampleRate = sampleRate;
             _thresholdMgr = trshInfo.Normalize().ToManager();
             _ratioMgr = ratInfo.Normalize().ToManager();
             _attackMgr = attInfo.Normalize().ToManager();
             _releaseMgr = relInfo.Normalize().ToManager();
         }
 
+        /// <summary>
+        /// Lin value of db based Threshold scale
+        /// </summary>
         public float Threshold { get => DBFSConvert.DbToLin(-_thresholdMgr.CurrentValue); }
+
+        /// <summary>
+        /// Dbs to Db units Ratio scale
+        /// </summary>
         public float Ratio { get => _ratioMgr.CurrentValue; }
+
+        /// <summary>
+        /// Attack in sample units
+        /// </summary>
+        public float Attack => Math.Abs(_attackMgr.CurrentValue) / 1000 * _sampleRate;
+
+        /// <summary>
+        /// Release in sample units
+        /// </summary>
+        public float Release => Math.Abs(_releaseMgr.CurrentValue) / 1000 * _sampleRate;
+
+
+        /// <summary>
+        /// _attackSamplesPassed to Attack ratio
+        /// </summary>
+        public float AttackRatio => _attackCounter / Attack;
+        
+        /// <summary>
+        /// _releaseSamplesHandled to Release ratio
+        /// </summary>
+        public float ReleaseRatio => _releaseCounter / Release;
+
+        public float AttackCoef => (float)(1 / (Math.Exp(-4 * (AttackRatio - 1))));
+        public float ReleaseCoef => (float)(Math.Exp(-4 * ReleaseRatio));
+
+
+
+        /// <summary>
+        /// Current phase of compressor
+        /// </summary>
+        public ECompState State { get; set; } = ECompState.Bypass;
+
+
+        public void SetSampleRate(float sR) => _sampleRate = sR;
+
+        /// <summary>
+        /// Set attack state to compressor, e.g. set attack counter to 1 or release proportion to attack, 
+        /// depending on the current state, nullify release counter and set State to Attack
+        /// </summary>
+        internal void SetAttackState()
+        {
+            if (State == ECompState.Bypass)
+                _attackCounter = 1;
+            else if (State == ECompState.Release)
+                _attackCounter = (int)(ReleaseRatio * Attack);
+
+            _releaseCounter = 0;
+            State = ECompState.Attack;
+        }
+
+        /// <summary>
+        /// Nullify both attack and release counters and set Compress state
+        /// </summary>
+        internal void SetCompressState()
+        {
+            _attackCounter = 0;
+            _releaseCounter = 0;
+            State = ECompState.Compress;
+        }
+
+        /// <summary>
+        /// Nullify attack counter, set release counter to 1 and set Release state
+        /// </summary>
+        internal void SetReleaseState()
+        {
+            _attackCounter = 0;
+            _releaseCounter = 1;
+            State = ECompState.Release;
+        }
+
+        /// <summary>
+        /// Nullify both attack and release counters and set Bypass state
+        /// </summary>
+        internal void SetBypassState()
+        {
+            _releaseCounter = 0;
+            _attackCounter = 0;
+            State = ECompState.Bypass;
+        }
+
+        internal void SampleHandled() 
+        {
+            if (State == ECompState.Attack)
+                _attackCounter++;
+
+            if (State == ECompState.Release)
+                _releaseCounter++;
+        }
     }
 }

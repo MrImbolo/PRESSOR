@@ -12,7 +12,7 @@ namespace TestPlugin
         /// <summary>
         /// Constant coefficient for dbfs convertion
         /// </summary>
-        private static float _dbfsCoef = (float) (20 / Math.Log(10));
+        private static readonly float _dbfsCoef = (float) (20 / Math.Log(10));
 
         /// <summary>
         /// From linear scale to expanential one

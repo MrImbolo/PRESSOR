@@ -22,7 +22,7 @@ namespace TestPlugin
 
         private sealed class PressorProgramReader : VstProgramReader
         {
-            private Plugin _plugin;
+            private readonly Plugin _plugin;
             private Stream _input;
             private Encoding _encoding;
 
