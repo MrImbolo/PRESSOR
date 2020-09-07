@@ -43,11 +43,6 @@
             else if (PressorParams.State == ECompState.Attack)
             {
                 if (PressorParams.AttackRatio >= 1)
-                    PressorParams.SetCompressState();
-            }
-            else if (PressorParams.State == ECompState.Compress)
-            {
-                if (!sample.IsAbove(PressorParams.Threshold))
                     PressorParams.SetReleaseState();
             }
             else if (PressorParams.State == ECompState.Release)
