@@ -35,5 +35,8 @@ namespace TestPlugin
             : obj.GetHashCode() == GetHashCode();
 
         public override int GetHashCode() => HashCode.Combine(Value, Sign, Abs, IsZero);
+
+        public static bool operator ==(Sample a, Sample b) => a.Value == b.Value;
+        public static bool operator !=(Sample a, Sample b) => a.Value != b.Value;
     }
 }
