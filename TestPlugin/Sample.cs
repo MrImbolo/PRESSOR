@@ -22,5 +22,18 @@ namespace TestPlugin
         public bool IsZero => Value == 0;
 
         public bool IsAbove(float threshold) => Abs > threshold;
+
+        public override string ToString() => Value.ToString();
+
+        public override bool Equals(object obj) => 
+            (obj is Sample sample) 
+                ? sample.Value == Value
+            : (obj is float fSample) 
+                ? Value == fSample
+            : (obj is double dSample)
+                ? Value == (float)dSample
+            : obj.GetHashCode() == GetHashCode();
+
+        public override int GetHashCode() => HashCode.Combine(Value, Sign, Abs, IsZero);
     }
 }
