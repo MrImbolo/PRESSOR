@@ -1,5 +1,6 @@
 ﻿using Jacobi.Vst.Core;
 using Jacobi.Vst.Plugin.Framework;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -21,8 +22,11 @@ namespace TestPlugin
         private IGainProcessor _gainProcessor;
         private Sample _sample;
         private float _sampleRate;
+        private int _sampleCount = 0;
 
-        private PressorParams Params { get; set; }
+
+        public int SampleCount { get => _sampleCount; private set => _sampleCount = (value < int.MaxValue) ? value : 0; }
+        private PressorParams PressorParams { get; set; }
         
 
         /// <summary>
@@ -37,11 +41,18 @@ namespace TestPlugin
             get => _sampleRate;
             set {
                 _sampleRate = value;
-                Params.SetSampleRate(value);
+                PressorParams.SetSampleRate(value);
             } 
         }
 
         public Pressor()
+        {
+            InitializeParameterInfos();
+            _detector = new Detector(PressorParams);
+            _gainProcessor = new GainProcessor(PressorParams);
+        }
+
+        private void InitializeParameterInfos()
         {
             ParameterInfos = new VstParameterInfoCollection();
 
@@ -60,9 +71,9 @@ namespace TestPlugin
                 LargeStepFloat = 3f,
                 DefaultValue = DBFSConvert.DbToLin(-9),
             };
-
             ParameterInfos.Add(threshInfo);
-            
+
+
             var ratInfo = new VstParameterInfo
             {
                 CanBeAutomated = true,
@@ -75,8 +86,8 @@ namespace TestPlugin
                 LargeStepInteger = 3,
                 DefaultValue = 4f,
             };
-
             ParameterInfos.Add(ratInfo);
+
 
             var attInfo = new VstParameterInfo
             {
@@ -90,8 +101,23 @@ namespace TestPlugin
                 LargeStepInteger = 10,
                 DefaultValue = 50f,
             };
-
             ParameterInfos.Add(attInfo);
+
+
+            var kneeInfo = new VstParameterInfo
+            {
+                CanBeAutomated = true,
+                CanRamp = true,
+                Name = "Knee",
+                Label = "Knee",
+                ShortLabel = "db to db",
+                MinInteger = 1,
+                MaxInteger = 10,
+                StepInteger = 1,
+                LargeStepInteger = 1,
+                DefaultValue = 1,
+            };
+            ParameterInfos.Add(kneeInfo);
 
             var relInfo = new VstParameterInfo
             {
@@ -111,30 +137,23 @@ namespace TestPlugin
 
             #endregion
 
-            Params = new PressorParams(SampleRate, threshInfo, ratInfo, attInfo, relInfo);
-
-            _detector = new Detector(Params);
-            _gainProcessor = new GainProcessor(Params);
+            PressorParams = new PressorParams(SampleRate, threshInfo, ratInfo, attInfo, relInfo, kneeInfo);
         }
-        
+
         public void ProcessChannel(VstAudioBuffer inBuffer, VstAudioBuffer outBuffer)
         {
             for (var i = 0; i < inBuffer.SampleCount; i++)
             {
                 if (inBuffer[i] == 0)
                 {
-                    Params.SetBypassState();
+                    PressorParams.SetBypassState();
                     continue;
                 }
 
                 _sample = new Sample(inBuffer[i]);
+                _detector.Detect(_sample);
 
-                _detector.UpdateState(_sample);
-
-                if (Params.State == ECompState.Bypass)
-                    continue;
-
-                outBuffer[i] = _gainProcessor.Process(_sample).Value;
+                outBuffer[i] = (float)_gainProcessor.Process(_sample).Value;
             }
         }
     }

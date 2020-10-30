@@ -5,78 +5,102 @@ namespace TestPlugin
 {
     public class PressorParams
     {
+        private int _sampleCount = 0;
         private int _attackCounter;
         private int _releaseCounter;
-        private float _sampleRate;
+        private double _sampleRate;
+        private double _gainReduction;
+        public int SampleCount { get => _sampleCount; private set => _sampleCount = (value < int.MaxValue) ? value : 0; }
 
         private VstParameterManager _thresholdMgr;
         private VstParameterManager _ratioMgr;
         private VstParameterManager _attackMgr;
         private VstParameterManager _releaseMgr;
+        private VstParameterManager _kneeMgr;
 
-
-        public PressorParams(float sampleRate, VstParameterInfo trshInfo, VstParameterInfo ratInfo,
-                            VstParameterInfo attInfo, VstParameterInfo relInfo) 
+        public PressorParams(double sampleRate, VstParameterInfo trshInfo, VstParameterInfo ratInfo,
+                            VstParameterInfo attInfo, VstParameterInfo relInfo, VstParameterInfo kneeInfo) 
         {
             _sampleRate = sampleRate;
             _thresholdMgr = trshInfo.Normalize().ToManager();
             _ratioMgr = ratInfo.Normalize().ToManager();
             _attackMgr = attInfo.Normalize().ToManager();
             _releaseMgr = relInfo.Normalize().ToManager();
+            _kneeMgr = kneeInfo.Normalize().ToManager();
+            
         }
 
         /// <summary>
         /// Lin value of db based Threshold scale
         /// </summary>
-        public float Threshold { get => DBFSConvert.DbToLin(-_thresholdMgr.CurrentValue); }
+        public double Threshold { get => DBFSConvert.DbToLin(-_thresholdMgr.CurrentValue); }
 
         /// <summary>
         /// Dbs to Db units Ratio scale
         /// </summary>
-        public float Ratio { get => _ratioMgr.CurrentValue; }
+        public double Ratio { get => _ratioMgr.CurrentValue; }
 
         /// <summary>
         /// State dependent ratio bringed to valid value
         /// </summary>
-        public float RatioFixed => StateRatio < 1 ? 1f : StateRatio;
+        // public double RatioFixed => StateRatio < 1 ? 1f : StateRatio;
+
         /// <summary>
         /// Ratio value depending on the state
         /// </summary>
-        public float StateRatio => State switch
-        {
-            ECompState.Bypass => Ratio,
-            ECompState.Attack => Ratio * AttackCoef,
-            ECompState.Release => Ratio,
-            _ => 1f,
-        };
+        //public double StateRatio => State switch
+        //{
+        //    ECompState.Bypass => Ratio,
+        //    ECompState.Attack => 1 + Ratio * AttackCoef > Ratio ? Ratio : 1 + Ratio * AttackCoef,
+        //    ECompState.Release => Ratio,
+        //    _ => 1f,
+        //};
 
-        public float GainReduction { get; set; }
+
+        /// <summary>
+        /// Reduction level that must not be 0 and is a ratio between (input - threshold) / (output - threshold) difference 
+        /// </summary>
+        public double GainReduction {
+            get => Math.Abs(_gainReduction);
+            set => _gainReduction = value > Knee ? Math.Abs((value + Knee) / 2) : Math.Abs(value);
+        }
+        /// <summary>
+        /// Reduction level that must not be 0 and is a ratio between (input - threshold) / (output - threshold) difference 
+        /// </summary>
+        public double LastGainReduction { get; set; }
 
 
         /// <summary>
         /// Attack in sample units
         /// </summary>
-        public float Attack => Math.Abs(_attackMgr.CurrentValue) / 1000 * _sampleRate;
+        public double Attack => Math.Abs(_attackMgr.CurrentValue) / 1000 * _sampleRate;
 
         /// <summary>
         /// Release in sample units
         /// </summary>
-        public float Release => Math.Abs(_releaseMgr.CurrentValue) / 1000 * _sampleRate;
+        public double Release => Math.Abs(_releaseMgr.CurrentValue) / 1000 * _sampleRate;
 
 
         /// <summary>
         /// _attackSamplesPassed to Attack ratio
         /// </summary>
-        public float AttackRatio => _attackCounter / Attack;
+        public double AttackRatio => _attackCounter / Attack;
         
         /// <summary>
         /// _releaseSamplesHandled to Release ratio
         /// </summary>
-        public float ReleaseRatio => _releaseCounter / Release;
+        public double ReleaseRatio => _releaseCounter / Release;
 
-        public float AttackCoef => (float)(1 / (Math.Exp(-4 * (AttackRatio - 1))));
-        public float ReleaseCoef => (float)(Math.Exp(-4 * ReleaseRatio));
+        //public double AttackCoef => 1 / (Math.Exp(-4 * (AttackRatio - 1)));
+        //public double ReleaseCoef => Math.Exp(-4 * ReleaseRatio);
+        public double Knee => DBFSConvert.DbToLin(-_kneeMgr.CurrentValue);
 
+        public double GainReductionFixed => State switch 
+        { 
+            ECompState.Attack => GainReduction * AttackRatio,
+            ECompState.Release => GainReduction * ReleaseRatio,
+            _ => GainReduction
+        };
 
 
         /// <summary>
@@ -84,15 +108,7 @@ namespace TestPlugin
         /// </summary>
         public ECompState State { get; set; } = ECompState.Bypass;
 
-
-        //public void RecountGainReduction(Sample sample)
-        //{
-        //    var tempGr = sample.Abs - (Threshold + ((sample.Abs - Threshold) / RatioFixed));
-        //    if (tempGr > GainReduction)
-        //        GainReduction = tempGr;
-        //}
-
-        public void SetSampleRate(float sR) => _sampleRate = sR;
+        public void SetSampleRate(double sR) => _sampleRate = sR;
 
         /// <summary>
         /// Set attack state to compressor, e.g. set attack counter to 1 or release proportion to attack, 
@@ -103,7 +119,7 @@ namespace TestPlugin
             if (State == ECompState.Bypass)
                 _attackCounter = 1;
             else if (State == ECompState.Release)
-                _attackCounter = (int)(ReleaseRatio * Attack);
+                _attackCounter = (int)Math.Round(ReleaseRatio * Attack, 0);
 
             _releaseCounter = 0;
             State = ECompState.Attack;
@@ -131,13 +147,16 @@ namespace TestPlugin
             State = ECompState.Bypass;
         }
 
-        internal void SampleHandled() 
+        internal void SampleHandled()
         {
             if (State == ECompState.Attack)
                 _attackCounter++;
 
             if (State == ECompState.Release)
                 _releaseCounter++;
+
+            LastGainReduction = GainReductionFixed;
+            GainReduction = 0d;
         }
     }
 }

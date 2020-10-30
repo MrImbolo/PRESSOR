@@ -4,7 +4,7 @@ namespace TestPlugin
 {
     public struct Sample
     {
-        public Sample(float sample)
+        public Sample(double sample)
         {
             var value = (sample > 1)
                 ? 1
@@ -16,27 +16,31 @@ namespace TestPlugin
             Sign = (value < 0) ? -1 : 1;
         }
 
-        public float Value => Abs * Sign;
-        public float Sign { get; set; }
-        public float Abs { get; set; }
+        public double Value => Abs * Sign;
+        public double Sign { get; set; }
+        public double Abs { get; set; }
         public bool IsZero => Value == 0;
 
-        public bool IsAbove(float threshold) => Abs > threshold;
+        public bool IsAbove(double threshold) => Abs > threshold;
 
         public override string ToString() => Value.ToString();
 
         public override bool Equals(object obj) => 
             (obj is Sample sample) 
                 ? sample.Value == Value
-            : (obj is float fSample) 
+            : (obj is double fSample) 
                 ? Value == fSample
             : (obj is double dSample)
-                ? Value == (float)dSample
+                ? Value == (double)dSample
             : obj.GetHashCode() == GetHashCode();
 
         public override int GetHashCode() => HashCode.Combine(Value, Sign, Abs, IsZero);
 
         public static bool operator ==(Sample a, Sample b) => a.Value == b.Value;
         public static bool operator !=(Sample a, Sample b) => a.Value != b.Value;
+        public static bool operator >(Sample a, Sample b) => a.Value > b.Value;
+        public static bool operator <(Sample a, Sample b) => a.Value < b.Value;
+        public static bool operator >=(Sample a, Sample b) => a.Value >= b.Value;
+        public static bool operator <=(Sample a, Sample b) => a.Value <= b.Value;
     }
 }
