@@ -14,12 +14,14 @@ namespace TestPlugin
     {
         Bypass,
         Attack, 
-        Release
+        Release,
+        Compressing
     }
     internal sealed class Pressor
     {
-        private ICompDetector _detector;
-        private IGainProcessor _gainProcessor;
+        private readonly ICompDetector _detector;
+        private readonly IGainProcessor _gainProcessor;
+        public readonly IStateHandler _stateHandler;
         private Sample _sample;
         private float _sampleRate;
         private int _sampleCount = 0;
@@ -48,8 +50,9 @@ namespace TestPlugin
         public Pressor()
         {
             InitializeParameterInfos();
-            _detector = new Detector(PressorParams);
-            _gainProcessor = new GainProcessor(PressorParams);
+            _stateHandler = new StateHandler(PressorParams);
+            _detector = new Detector(PressorParams, _stateHandler);
+            _gainProcessor = new GainProcessor(PressorParams, _stateHandler);
         }
 
         private void InitializeParameterInfos()
@@ -69,7 +72,7 @@ namespace TestPlugin
                 SmallStepFloat = 0.1f,
                 StepFloat = 1f,
                 LargeStepFloat = 3f,
-                DefaultValue = DBFSConvert.DbToLin(-9),
+                DefaultValue = (float)DBFSConvert.DbToLin(-9),
             };
             ParameterInfos.Add(threshInfo);
 
@@ -103,22 +106,6 @@ namespace TestPlugin
             };
             ParameterInfos.Add(attInfo);
 
-
-            var kneeInfo = new VstParameterInfo
-            {
-                CanBeAutomated = true,
-                CanRamp = true,
-                Name = "Knee",
-                Label = "Knee",
-                ShortLabel = "db to db",
-                MinInteger = 1,
-                MaxInteger = 10,
-                StepInteger = 1,
-                LargeStepInteger = 1,
-                DefaultValue = 1,
-            };
-            ParameterInfos.Add(kneeInfo);
-
             var relInfo = new VstParameterInfo
             {
                 CanBeAutomated = true,
@@ -135,6 +122,22 @@ namespace TestPlugin
 
             ParameterInfos.Add(relInfo);
 
+
+            var kneeInfo = new VstParameterInfo
+            {
+                CanBeAutomated = true,
+                CanRamp = true,
+                Name = "Knee",
+                Label = "Knee",
+                ShortLabel = "db to db",
+                MinInteger = 0,
+                MaxInteger = 10,
+                StepInteger = 1,
+                LargeStepInteger = 1,
+                DefaultValue = 1,
+            };
+            ParameterInfos.Add(kneeInfo);
+
             #endregion
 
             PressorParams = new PressorParams(SampleRate, threshInfo, ratInfo, attInfo, relInfo, kneeInfo);
@@ -146,14 +149,16 @@ namespace TestPlugin
             {
                 if (inBuffer[i] == 0)
                 {
-                    PressorParams.SetBypassState();
+                    _stateHandler.SetBypassState();
                     continue;
                 }
 
                 _sample = new Sample(inBuffer[i]);
+
                 _detector.Detect(_sample);
 
-                outBuffer[i] = (float)_gainProcessor.Process(_sample).Value;
+                if (_detector.IsCurrentSampleForProcessing())
+                    outBuffer[i] = (float)_gainProcessor.Process(_sample).Value;
             }
         }
     }

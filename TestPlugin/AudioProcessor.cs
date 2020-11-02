@@ -9,6 +9,7 @@ namespace TestPlugin
     /// </summary>
     internal sealed class AudioProcessor : VstPluginAudioProcessor
     {
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("CodeQuality", "IDE0052:Remove unread private members", Justification = "Library code")]
         private readonly Plugin _plugin;
 
         /// <summary>
