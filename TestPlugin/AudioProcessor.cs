@@ -1,6 +1,7 @@
 ﻿using Jacobi.Vst.Core;
 using Jacobi.Vst.Plugin.Framework.Plugin;
 using System;
+using System.Linq;
 
 namespace TestPlugin
 {
@@ -48,8 +49,21 @@ namespace TestPlugin
         {
             base.Process(inChannels, outChannels);
 
+            if (inChannels.All(x => x[0] == 0))
+                return;
+
             for (int i = 0; i < inChannels.Length; i++)
                 Pressor.ProcessChannel(inChannels[i], outChannels[i]);
         }
+    }
+    public static class VstAudioBufferExtensions
+    {
+        public static bool IsEmpty(this VstAudioBuffer buffer)
+        {
+            for (int i = 0; i < buffer.SampleCount; i++)
+                if (buffer[i] != 0) return false;
+
+            return true;
+        } 
     }
 }

@@ -14,11 +14,11 @@ namespace TestPlugin
                     : sample;
 
             Abs = DBFSConvert.LinToDb(Math.Abs(value));
-            Sign = (value < 0) ? -1 : 1;
+            Sign = Math.Sign(value);
         }
 
         public readonly double Initial;
-        public double Value => DBFSConvert.DbToLin(Abs) * Sign;
+        public double Value => Math.CopySign(DBFSConvert.DbToLin(Abs), Sign);
         public double Sign { get; set; }
         public double Abs { get; set; }
         public bool IsZero => Value == 0;

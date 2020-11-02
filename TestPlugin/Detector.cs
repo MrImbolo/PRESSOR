@@ -59,15 +59,15 @@ namespace TestPlugin
         }
 
 
-        public bool IsCurrentSampleForProcessing() => _pressorParams.State != ECompState.Bypass;
+        public bool IsCurrentSampleForProcessing() => _stateHandler.State != ECompState.Bypass;
 
-        public bool IsWaitingForDetection() => _pressorParams.State == ECompState.Bypass;
+        public bool IsWaitingForDetection() => _stateHandler.State == ECompState.Bypass;
 
         private bool IsDetected() => _pressorParams.CurveState != ECurveState.None;
 
         private void CheckExceesAndCountGR(Sample sample)
         {
-            if (2 * (sample.Abs - _pressorParams.Threshold) < _pressorParams.Knee)
+            if (2 * (sample.Abs - _pressorParams.Threshold) < -_pressorParams.Knee)
             {
                 _pressorParams.GainReduction = 0;
                 _pressorParams.CurveState = ECurveState.None;

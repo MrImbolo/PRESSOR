@@ -8,11 +8,13 @@ namespace TestPlugin
         /// Minimal signal constant
         /// </summary>
         private const double _epsilon = 0.001f;
-        
+
+
         /// <summary>
         /// Constant coefficient for dbfs convertion
         /// </summary>
-        private static readonly double _dbfsCoef = (double) (20 / Math.Log(10));
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("CodeQuality", "IDE0052:Remove unread private members", Justification = "Just in case")]
+        private static readonly double _dbfsCoef = 20 / Math.Log(10);
 
         /// <summary>
         /// From linear scale to expanential one

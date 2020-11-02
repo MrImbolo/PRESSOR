@@ -15,7 +15,7 @@ namespace TestPlugin
 
         public Plugin() 
             : base("VST.NET test plugin", new FourCharacterCode("PRSR").ToInt32(), 
-                  new VstProductInfo("Sound Engineering Thesis", "@MrImbolo aka Daniel Zotov @ 2020", 1000), 
+                  new VstProductInfo("Sound Engineering Thesis", "@MrImbolo aka Daniel Zotov @ 2020", 1001), 
                   VstPluginCategory.Mastering)
         {
             ParameterFactory = new PluginParameterFactory();

@@ -4,14 +4,40 @@ namespace TestPlugin
 {
     public interface IStateHandler
     {
+        /// <summary>
+        /// Gain Reduction Attack Multiplyer depending on how much attack state samples has passed
+        /// </summary>
         double AttackRatio { get; }
-        double GainReductionFixed { get; }
-        double ReleaseRatio { get; }
 
+        /// <summary>
+        /// GainReduction according to current state (attack, release)
+        /// </summary>
+        double GainReductionFixed { get; }
+        /// <summary>
+        /// Gain Reduction Release Multiplyer depending on how much release state samples has passed
+        /// </summary>
+        double ReleaseRatio { get; }
+        /// <summary>
+        /// Current state of the pressor state machine
+        /// </summary>
+        ECompState State { get; }
+
+        /// <summary>
+        /// Notify IStateHandler current sample is fully handled and counters must increment
+        /// </summary>
         void SampleHandled();
+        /// <summary>
+        /// Set state machine into the increasing gain reduction attack state
+        /// </summary>
         void SetAttackState();
-        void SetBypassState();
+        /// <summary>
+        /// Set state machine into the decreasing gain reduction release state
+        /// </summary>
         void SetReleaseState();
+        /// <summary>
+        /// Set state machine into passive non-reducting bypass state
+        /// </summary>
+        void SetBypassState();
     }
 
     public class StateHandler : IStateHandler
@@ -36,25 +62,35 @@ namespace TestPlugin
         /// </summary>
         public double ReleaseRatio => PressorMath.LogReverseFunc(_releaseCounter, _pressorParams.Release);
 
-        public double GainReductionFixed => _pressorParams.State switch
+        public double GainReductionFixed => State switch
         {
             ECompState.Attack => _pressorParams.GainReduction * AttackRatio,
             ECompState.Release => _pressorParams.GainReduction * ReleaseRatio,
             _ => _pressorParams.GainReduction
         };
+
+        /// <summary>
+        /// Current phase of compressor
+        /// </summary>
+        public ECompState State { get; set; } = ECompState.Bypass;
+
         /// <summary>
         /// Set attack state to compressor, e.g. set attack counter to 1 or release proportion to attack, 
         /// depending on the current state, nullify release counter and set State to Attack
         /// </summary>
         public void SetAttackState()
         {
-            if (_pressorParams.State == ECompState.Bypass)
+            if (State == ECompState.Bypass)
+            {
                 _attackCounter = 1;
-            else if (_pressorParams.State == ECompState.Release)
+                State = ECompState.Attack;
+            }
+            else if (State == ECompState.Release)
+            {
                 _attackCounter = (int)Math.Round(ReleaseRatio * _pressorParams.Attack, 0);
-
+                State = ECompState.Attack;
+            }
             _releaseCounter = 0;
-            _pressorParams.State = ECompState.Attack;
         }
 
         /// <summary>
@@ -65,7 +101,7 @@ namespace TestPlugin
             _attackCounter = 0;
             _releaseCounter = 1;
 
-            _pressorParams.State = ECompState.Release;
+            State = ECompState.Release;
         }
 
         /// <summary>
@@ -76,15 +112,17 @@ namespace TestPlugin
             _pressorParams.GainReduction = 0;
             _releaseCounter = 0;
             _attackCounter = 0;
-            _pressorParams.State = ECompState.Bypass;
+            State = ECompState.Bypass;
         }
-
+        /// <summary>
+        /// Set state machine into passive non-reducting bypass state
+        /// </summary>
         public void SampleHandled()
         {
-            if (_pressorParams.State == ECompState.Attack)
+            if (State == ECompState.Attack)
                 _attackCounter++;
 
-            if (_pressorParams.State == ECompState.Release)
+            if (State == ECompState.Release)
                 _releaseCounter++;
 
             if (_attackCounter >= _pressorParams.Attack)

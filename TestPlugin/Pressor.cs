@@ -149,7 +149,8 @@ namespace TestPlugin
             {
                 if (inBuffer[i] == 0)
                 {
-                    _stateHandler.SetBypassState();
+                    if (_stateHandler.State != ECompState.Bypass)
+                        _stateHandler.SetBypassState();
                     continue;
                 }
 
