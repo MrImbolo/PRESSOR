@@ -2,7 +2,8 @@
 {
     public interface IGainProcessor
     {
-        Sample Process(Sample sample);
+        void Process(Point sample);
+        void OPFilter(Point sample, Point lastSample);
     }
     internal class GainProcessor : IGainProcessor
     {
@@ -16,12 +17,16 @@
             _stateHandler = stateHandler;
         }
 
-        public Sample Process(Sample sample)
+        public void OPFilter(Point sample, Point lastSample)
         {
-            sample.Abs -= _stateHandler.GainReductionFixed;
-
-            _stateHandler.SampleHandled();
-            return sample;
+            sample.Dbs = 0.63 * lastSample.Dbs + (1 - 0.63) * sample.Dbs;
         }
+
+        public void Process(Point sample)
+        {
+            sample.Dbs -= _stateHandler.GainReductionFixed;
+            _stateHandler.SampleHandled();
+        }
+
     }
 }

@@ -1,7 +1,10 @@
 ﻿using Jacobi.Vst.Plugin.Framework;
+using Microsoft.VisualBasic;
 using System;
 using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
 using System.Drawing;
+using System.Linq;
 using System.Xml.Serialization;
 
 namespace TestPlugin
@@ -9,8 +12,10 @@ namespace TestPlugin
     public class PressorParams
     {
         private int _sampleCount = 0;
-        private double _sampleRate;
         private double _gainReduction;
+
+        //private int _attackCounter;
+        //private int _releaseCounter;
         public int SampleCount { get => _sampleCount; private set => _sampleCount = (value < int.MaxValue) ? value : 0; }
 
         private readonly VstParameterManager _thresholdMgr;
@@ -20,15 +25,17 @@ namespace TestPlugin
         private readonly VstParameterManager _kneeMgr;
 
 
-        public PressorParams(double sampleRate, VstParameterInfo trshInfo, VstParameterInfo ratInfo,
-                            VstParameterInfo attInfo, VstParameterInfo relInfo, VstParameterInfo kneeInfo) 
+        public PressorParams(VstParameterInfoCollection parameters) 
         {
-            _sampleRate = sampleRate;
-            _thresholdMgr = trshInfo.Normalize().ToManager();
-            _ratioMgr = ratInfo.Normalize().ToManager();
-            _attackMgr = attInfo.Normalize().ToManager();
-            _releaseMgr = relInfo.Normalize().ToManager();
-            _kneeMgr = kneeInfo.Normalize().ToManager();
+            if (parameters == null || !parameters.Any())
+                throw new ArgumentNullException(
+                    $"{nameof(VstParameterInfoCollection)} type variable value is {parameters?.Count.ToString() ?? "null"}");
+
+            _thresholdMgr = parameters.ElementAt(0).Normalize().ToManager();
+            _ratioMgr = parameters.ElementAt(1).Normalize().ToManager();
+            _attackMgr = parameters.ElementAt(2).Normalize().ToManager();
+            _releaseMgr = parameters.ElementAt(3).Normalize().ToManager();
+            _kneeMgr = parameters.ElementAt(4).Normalize().ToManager();
 
             SetUpInitialValues();
 
@@ -40,11 +47,11 @@ namespace TestPlugin
         /// </summary>
         private void SetUpInitialValues()
         {
-            Threshold = -_thresholdMgr.CurrentValue;
-            Ratio = _ratioMgr.CurrentValue;
-            Attack = Math.Abs(_attackMgr.CurrentValue) / 1000 * _sampleRate;
-            Release = Math.Abs(_releaseMgr.CurrentValue) / 1000 * _sampleRate;
-            Knee = _kneeMgr.CurrentValue;
+            T = -_thresholdMgr.CurrentValue;
+            R = _ratioMgr.CurrentValue;
+            Ta = Math.Round(_attackMgr.CurrentValue, 0) / 1000 * SampleRate;
+            Tr = Math.Round(_releaseMgr.CurrentValue, 0) / 1000 * SampleRate;
+            W = _kneeMgr.CurrentValue;
         }
 
         /// <summary>
@@ -65,7 +72,7 @@ namespace TestPlugin
             if (e.PropertyName == nameof(VstParameterManager.CurrentValue))
             {
                 var paramMgr = (VstParameterManager)sender;
-                Threshold = -paramMgr.CurrentValue;
+                T = -paramMgr.CurrentValue;
             }
         }
         private void RatioManager_PropertyChanged(object sender, PropertyChangedEventArgs e)
@@ -73,7 +80,7 @@ namespace TestPlugin
             if (e.PropertyName == nameof(VstParameterManager.CurrentValue))
             {
                 var paramMgr = (VstParameterManager)sender;
-                Ratio = paramMgr.CurrentValue;
+                R = paramMgr.CurrentValue;
             }
         }
         private void AttackManager_PropertyChanged(object sender, PropertyChangedEventArgs e)
@@ -81,7 +88,7 @@ namespace TestPlugin
             if (e.PropertyName == nameof(VstParameterManager.CurrentValue))
             {
                 var paramMgr = (VstParameterManager)sender;
-                Attack = Math.Abs(paramMgr.CurrentValue) / 1000 * _sampleRate;
+                Ta = Math.Round(paramMgr.CurrentValue, 0) / 1000 * SampleRate;
             }
         }
         private void ReleaseManager_PropertyChanged(object sender, PropertyChangedEventArgs e)
@@ -89,7 +96,7 @@ namespace TestPlugin
             if (e.PropertyName == nameof(VstParameterManager.CurrentValue))
             {
                 var paramMgr = (VstParameterManager)sender;
-                Release = Math.Abs(paramMgr.CurrentValue) / 1000 * _sampleRate;
+                Tr = Math.Round(paramMgr.CurrentValue, 0) / 1000 * SampleRate;
             }
         }
         private void KneeManager_PropertyChanged(object sender, PropertyChangedEventArgs e)
@@ -97,7 +104,7 @@ namespace TestPlugin
             if (e.PropertyName == nameof(VstParameterManager.CurrentValue))
             {
                 var paramMgr = (VstParameterManager)sender;
-                Knee = paramMgr.CurrentValue;
+                W = paramMgr.CurrentValue;
             }
         }
         #endregion
@@ -105,46 +112,52 @@ namespace TestPlugin
         /// <summary>
         /// Lin value of db based Threshold scale
         /// </summary>
-        public double Threshold { get; private set; }
+        public double T { get; private set; }
 
         /// <summary>
         /// Dbs to Db units Ratio scale
         /// </summary>
-        public double Ratio { get; private set; }
+        public double R { get; private set; }
 
 
         /// <summary>
         /// Reduction level that must not be 0 and is a ratio between (input - threshold) / (output - threshold) difference 
         /// </summary>
         public double GainReduction {
-            get => Math.Abs(_gainReduction);
-            set => _gainReduction = value > Knee && Knee > 0 ? Math.Abs((value + Knee) / 2) : Math.Abs(value);
+            get => _gainReduction;
+            //set => _gainReduction = value > Knee && Knee > 0 ? Math.Abs((value + Knee) / 2) : Math.Abs(value);
+            set => _gainReduction = Math.Abs(value);
         }
 
 
         /// <summary>
         /// Attack in sample units
         /// </summary>
-        public double Attack { get; private set; }
+        public double Ta { get; private set; }
 
         /// <summary>
         /// Release in sample units
         /// </summary>
-        public double Release { get; private set; }
+        public double Tr { get; private set; }
+        ///// <summary>
+        ///// Attack in sample units
+        ///// </summary>
+        //public double AttackRatio => Math.Exp(Math.Log(0.01) / (Ta * _sampleRate * 0.001));
+
+        ///// <summary>
+        ///// Release in sample units
+        ///// </summary>
+        //public double ReleaseRatio => Math.Pow(0.01, 1.0 / Tr * _sampleRate * 0.001);
 
         /// <summary>
         /// Cimpressor curve knee in dBs
         /// </summary>
-        public double Knee { get; private set; }
+        public double W { get; private set; }
 
+        public double Env { get; internal set; }
+        //public Point LastSample { get; internal set; }
+        public double SampleRate { get; set; }
 
-
-        /// <summary>
-        /// Current compressor curve state
-        /// </summary>
-        public ECurveState CurveState { get; set; } = ECurveState.None;
-
-
-        public void SetSampleRate(double sR) => _sampleRate = sR;
+        //public void SetSampleRate(double sR) => _sampleRate = sR;
     }
 }
