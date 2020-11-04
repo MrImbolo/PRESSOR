@@ -21,7 +21,7 @@ namespace TestPlugin
             ParameterFactory = new PluginParameterFactory();
             var audioProcessor = GetInstance<AudioProcessor>();
 
-            ParameterFactory.ParameterInfos.AddRange(audioProcessor.Pressor.ParameterInfos);
+            ParameterFactory.ParameterInfos.AddRange(audioProcessor.ParameterInfos);
         }
 
         protected override void ConfigureServices(IServiceCollection services)

@@ -55,12 +55,12 @@ namespace TestPlugin
         /// <summary>
         /// _attackSamplesPassed to Attack smooth ratio
         /// </summary>
-        public double AttackRatio => PressorMath.StraightQuadFunc(_attackCounter, _pressorParams.Attack);
+        public double AttackRatio => PressorMath.StraightQuadFunc(_attackCounter, _pressorParams.Ta);
 
         /// <summary>
         /// _releaseSamplesHandled to Release smooth ratio
         /// </summary>
-        public double ReleaseRatio => PressorMath.LogReverseFunc(_releaseCounter, _pressorParams.Release);
+        public double ReleaseRatio => PressorMath.LogReverseFunc(_releaseCounter, _pressorParams.Tr);
 
         public double GainReductionFixed => State switch
         {
@@ -87,7 +87,7 @@ namespace TestPlugin
             }
             else if (State == ECompState.Release)
             {
-                _attackCounter = (int)Math.Round(ReleaseRatio * _pressorParams.Attack, 0);
+                _attackCounter = (int)Math.Round(ReleaseRatio * _pressorParams.Ta, 0);
                 State = ECompState.Attack;
             }
             _releaseCounter = 0;
@@ -125,10 +125,10 @@ namespace TestPlugin
             if (State == ECompState.Release)
                 _releaseCounter++;
 
-            if (_attackCounter >= _pressorParams.Attack)
+            if (_attackCounter >= _pressorParams.Ta)
                 SetReleaseState();
 
-            if (_releaseCounter >= _pressorParams.Release)
+            if (_releaseCounter >= _pressorParams.Tr)
                 SetBypassState();
         }
     }

@@ -1,5 +1,6 @@
 ﻿using Jacobi.Vst.Core;
 using Jacobi.Vst.Plugin.Framework;
+using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -19,150 +20,130 @@ namespace TestPlugin
     }
     internal sealed class Pressor
     {
-        private readonly ICompDetector _detector;
-        private readonly IGainProcessor _gainProcessor;
-        public readonly IStateHandler _stateHandler;
-        private Sample _sample;
-        private float _sampleRate;
+        //private Point _sample;
+        //private float _sampleRate;
         private int _sampleCount = 0;
+        private double _da = 0;
+        private double _dr = 0;
+        private double _lx;
+        private double _avgEnv;
 
-
+        private List<double> _inputs = new List<double>();
+        private List<double> _dbEnvs = new List<double>();
+        private List<double> _envs = new List<double>();
+        private List<double> _grs = new List<double>();
+        private List<double> _outputs = new List<double>();
+        private List<double> _thresholds = new List<double>();
+        private List<double> _tfs = new List<double>();
         public int SampleCount { get => _sampleCount; private set => _sampleCount = (value < int.MaxValue) ? value : 0; }
-        private PressorParams PressorParams { get; set; }
-        
-
-        /// <summary>
-        /// Set of parameters for the plugin
-        /// </summary>
-        public VstParameterInfoCollection ParameterInfos { get; internal set; }
+        private PressorParams PP { get; }
 
         /// <summary>
         /// Gets or sets the sample rate.
         /// </summary>
-        public float SampleRate {
-            get => _sampleRate;
+        public double SampleRate {
+            get => PP.SampleRate;
             set {
-                _sampleRate = value;
-                PressorParams.SetSampleRate(value);
+                PP.SampleRate = value;
             } 
         }
 
-        public Pressor()
+        public Pressor(PressorParams pp)
         {
-            InitializeParameterInfos();
-            _stateHandler = new StateHandler(PressorParams);
-            _detector = new Detector(PressorParams, _stateHandler);
-            _gainProcessor = new GainProcessor(PressorParams, _stateHandler);
-        }
-
-        private void InitializeParameterInfos()
-        {
-            ParameterInfos = new VstParameterInfoCollection();
-
-            #region params
-
-            var threshInfo = new VstParameterInfo
-            {
-                CanBeAutomated = true,
-                Name = "Thrshld",
-                Label = "Threshold",
-                ShortLabel = "lin2dbs",
-                MinInteger = 0,
-                MaxInteger = 60,
-                SmallStepFloat = 0.1f,
-                StepFloat = 1f,
-                LargeStepFloat = 3f,
-                DefaultValue = (float)DBFSConvert.DbToLin(-9),
-            };
-            ParameterInfos.Add(threshInfo);
-
-
-            var ratInfo = new VstParameterInfo
-            {
-                CanBeAutomated = true,
-                Name = "Ratio",
-                Label = "Ratio",
-                ShortLabel = ":1",
-                MinInteger = 1,
-                MaxInteger = 60,
-                StepInteger = 1,
-                LargeStepInteger = 3,
-                DefaultValue = 4f,
-            };
-            ParameterInfos.Add(ratInfo);
-
-
-            var attInfo = new VstParameterInfo
-            {
-                CanBeAutomated = true,
-                Name = "Attack",
-                Label = "Attack",
-                ShortLabel = "ms",
-                MinInteger = 1,
-                MaxInteger = 1000,
-                StepInteger = 1,
-                LargeStepInteger = 10,
-                DefaultValue = 50f,
-            };
-            ParameterInfos.Add(attInfo);
-
-            var relInfo = new VstParameterInfo
-            {
-                CanBeAutomated = true,
-                CanRamp = true,
-                Name = "Release",
-                Label = "Release",
-                ShortLabel = "ms",
-                MinInteger = 1,
-                MaxInteger = 1000,
-                StepInteger = 1,
-                LargeStepInteger = 10,
-                DefaultValue = 50f,
-            };
-
-            ParameterInfos.Add(relInfo);
-
-
-            var kneeInfo = new VstParameterInfo
-            {
-                CanBeAutomated = true,
-                CanRamp = true,
-                Name = "Knee",
-                Label = "Knee",
-                ShortLabel = "db to db",
-                MinInteger = 0,
-                MaxInteger = 10,
-                StepInteger = 1,
-                LargeStepInteger = 1,
-                DefaultValue = 1,
-            };
-            ParameterInfos.Add(kneeInfo);
-
-            #endregion
-
-            PressorParams = new PressorParams(SampleRate, threshInfo, ratInfo, attInfo, relInfo, kneeInfo);
+            PP = pp;
         }
 
         public void ProcessChannel(VstAudioBuffer inBuffer, VstAudioBuffer outBuffer)
         {
+            _inputs.Clear();
+            _dbEnvs.Clear();
+            _envs.Clear();
+            _grs.Clear();
+            _outputs.Clear();
+            _thresholds.Clear();
+            _tfs.Clear();
+
+            var t = PP.T;
+            var r = PP.R;
+            var w = PP.W;
+            
+            if (_avgEnv == 0)
+                _avgEnv = inBuffer.AvgEnv();
+
+            if (_lx == 0)
+                _lx = _avgEnv;
+
             for (var i = 0; i < inBuffer.SampleCount; i++)
             {
-                if (inBuffer[i] == 0)
+                double xi = inBuffer[i];
+                double yi = 0.0;
+                double tf = 0.0;
+                double gri = 1.0;
+
+                _thresholds.Add(t);
+                _inputs.Add(xi);
+
+                _avgEnv = PressorMath.EnvFunc(_avgEnv, Math.Abs(xi));
+                _envs.Add(_avgEnv);
+                var env = DBFSConvert.LinToDb(_avgEnv);
+
+                _dbEnvs.Add(env);
+
+                // testing
+                var gr = Math.Abs(PressorMath.GR(env, t, r, w));
+                _grs.Add(gr);
+
+                if (gr == 0)
                 {
-                    if (_stateHandler.State != ECompState.Bypass)
-                        _stateHandler.SetBypassState();
-                    continue;
+                    if (_da > 0)
+                    {
+                        // Momentary attack to release state change
+                        _dr = Math.Ceiling(_da / PP.Ta * PP.Tr);
+                        _da = 0;
+                        tf = Math.Exp(-1 / (_dr / PP.Tr * SampleRate * 0.001));
+                    }
+                    else if (_dr > 0 && _dr < PP.Tr)
+                    {
+                        _dr--;
+                        tf = Math.Exp(-1 / (_dr / PP.Tr * SampleRate * 0.001));
+                    }
+                    else
+                        _dr = PP.Tr;
+                }
+                else
+                {
+                    if (_da == PP.Ta && _dr == 0)
+                    {
+                        // attack end => release
+                        _da = 0;
+                        _dr--;
+                        tf = Math.Exp(-1 / (_dr / PP.Tr * SampleRate * 0.001));
+                    }
+                    else if (_dr > 0 && _dr < PP.Tr)
+                    {
+                        // release
+                        _dr--;
+                        tf = Math.Exp(-1 / (_dr / PP.Tr * SampleRate * 0.001));
+                    }
+                    else if (_da >= 0 && _da < PP.Ta)
+                    {
+                        // release end || attack
+                        _da++;
+                        _dr = PP.Tr;
+                        tf = Math.Exp(-1 / (_da / PP.Ta * SampleRate * 0.001));
+                    }
                 }
 
-                _sample = new Sample(inBuffer[i]);
+                _tfs.Add(tf);
 
-                _detector.Detect(_sample);
+                gri = DBFSConvert.DbToLin(Math.CopySign(gr * tf, -1));
 
-                if (_detector.IsCurrentSampleForProcessing())
-                    outBuffer[i] = (float)_gainProcessor.Process(_sample).Value;
+                yi = PressorMath.OPFilter(0.63, xi * gri, _lx);
+                outBuffer[i] = (float)yi;
+                _outputs.Add(yi);
+                _lx = yi;
             }
         }
     }
-
     
 }
