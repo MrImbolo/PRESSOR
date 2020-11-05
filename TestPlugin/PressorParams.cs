@@ -23,6 +23,7 @@ namespace TestPlugin
         private readonly VstParameterManager _attackMgr;
         private readonly VstParameterManager _releaseMgr;
         private readonly VstParameterManager _kneeMgr;
+        private readonly VstParameterManager _makeupMgr;
 
 
         public PressorParams(VstParameterInfoCollection parameters) 
@@ -36,6 +37,7 @@ namespace TestPlugin
             _attackMgr = parameters.ElementAt(2).Normalize().ToManager();
             _releaseMgr = parameters.ElementAt(3).Normalize().ToManager();
             _kneeMgr = parameters.ElementAt(4).Normalize().ToManager();
+            _makeupMgr = parameters.ElementAt(5).Normalize().ToManager();
 
             SetUpInitialValues();
 
@@ -52,6 +54,7 @@ namespace TestPlugin
             Ta = Math.Round(_attackMgr.CurrentValue, 0) / 1000 * SampleRate;
             Tr = Math.Round(_releaseMgr.CurrentValue, 0) / 1000 * SampleRate;
             W = _kneeMgr.CurrentValue;
+            M = _makeupMgr.CurrentValue;
         }
 
         /// <summary>
@@ -64,6 +67,7 @@ namespace TestPlugin
             _attackMgr.PropertyChanged += new PropertyChangedEventHandler(AttackManager_PropertyChanged);
             _releaseMgr.PropertyChanged += new PropertyChangedEventHandler(ReleaseManager_PropertyChanged);
             _kneeMgr.PropertyChanged += new PropertyChangedEventHandler(KneeManager_PropertyChanged);
+            _makeupMgr.PropertyChanged += new PropertyChangedEventHandler(MakeupManager_PropertyChanged);
         }
 
         #region PropertyChangedEventHandlers
@@ -105,6 +109,14 @@ namespace TestPlugin
             {
                 var paramMgr = (VstParameterManager)sender;
                 W = paramMgr.CurrentValue;
+            }
+        }
+        private void MakeupManager_PropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(VstParameterManager.CurrentValue))
+            {
+                var paramMgr = (VstParameterManager)sender;
+                M = paramMgr.CurrentValue;
             }
         }
         #endregion
@@ -153,7 +165,7 @@ namespace TestPlugin
         /// Cimpressor curve knee in dBs
         /// </summary>
         public double W { get; private set; }
-
+        public double M { get; private set; }
         public double Env { get; internal set; }
         //public Point LastSample { get; internal set; }
         public double SampleRate { get; set; }

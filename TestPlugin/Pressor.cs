@@ -7,6 +7,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Reflection.Metadata;
 using System.Runtime.InteropServices.ComTypes;
+using System.Text;
 using System.Threading;
 
 namespace TestPlugin
@@ -112,7 +113,7 @@ namespace TestPlugin
                 }
                 else
                 {
-                    if (_da == PP.Ta && _dr == 0)
+                    if (_da == PP.Ta && _dr == PP.Tr)
                     {
                         // attack end => release
                         _da = 0;
@@ -139,11 +140,24 @@ namespace TestPlugin
                 gri = DBFSConvert.DbToLin(Math.CopySign(gr * tf, -1));
 
                 yi = PressorMath.OPFilter(0.63, xi * gri, _lx);
-                outBuffer[i] = (float)yi;
+
+                if (double.IsNaN(yi))
+                    Debug.WriteLine($"Final sample is NaN, values were:{Environment.NewLine}" +
+                        $"{Stringify4Log((nameof(xi), xi), (nameof(gri), gri), (nameof(env), env), (nameof(tf), tf), (nameof(_lx), _lx))}");
+
+                outBuffer[i] = (float)(yi / DBFSConvert.DbToLin(-PP.M));
                 _outputs.Add(yi);
                 _lx = yi;
             }
         }
+        public string Stringify4Log(params (string, object)[] args)
+        {
+            StringBuilder log = new StringBuilder();
+            foreach(var (name, obj) in args)
+            {
+                log.AppendLine($"{name}='{obj}',{Environment.NewLine}");
+            }
+            return log.ToString().TrimEnd(',');
+        }
     }
-    
 }

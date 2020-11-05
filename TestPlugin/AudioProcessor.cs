@@ -139,6 +139,21 @@ namespace TestPlugin
             };
             ParameterInfos.Add(kneeInfo);
 
+            var mGainInfo = new VstParameterInfo
+            {
+                CanBeAutomated = true,
+                CanRamp = true,
+                Name = "MkGain",
+                Label = "MakeUpGain",
+                ShortLabel = "dbs",
+                MinInteger = 0,
+                MaxInteger = 60,
+                StepInteger = 1,
+                LargeStepInteger = 1,
+                DefaultValue = 0,
+            };
+            ParameterInfos.Add(mGainInfo);
+
             #endregion
         }
 
