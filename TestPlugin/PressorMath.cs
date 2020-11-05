@@ -32,7 +32,7 @@ namespace TestPlugin
         public static double GR(double env, double t, double r, double w) 
             => 2 * (env - t) < -w
                 ? 0
-                : (2 * Math.Abs(env - t) <= w)
+                : (2 * Math.Abs(env - t) <= w && w > 0)
                     ? (1 / r - 1) * Math.Pow(env - t + w / 2, 2) / (2 * w)
                     : env - (t + (env - t) / r);
 

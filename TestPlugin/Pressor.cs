@@ -94,7 +94,31 @@ namespace TestPlugin
                 var gr = Math.Abs(PressorMath.GR(env, t, r, w));
                 _grs.Add(gr);
 
-                if (gr == 0)
+                if (gr != 0)
+                {
+                    if (_da == PP.Ta && _dr == PP.Tr)
+                    {
+                        // attack end => release
+                        _da = 0;
+                        _dr--;
+                        tf = Math.Exp(-1 / (_dr / PP.Tr * SampleRate * 0.001));
+                    }
+                    else if (_dr > 0 && _dr < PP.Tr)
+                    {
+                        // release on gain end => swap with attack
+                        _da = Math.Ceiling(_dr / PP.Tr * PP.Ta);
+                        _dr = PP.Tr;
+                        tf = Math.Exp(-1 / (_dr / PP.Tr * SampleRate * 0.001));
+                    }
+                    else if (_da >= 0 && _da < PP.Ta)
+                    {
+                        // release end || attack
+                        _da++;
+                        _dr = PP.Tr;
+                        tf = Math.Exp(-1 / (_da / PP.Ta * SampleRate * 0.001));
+                    }
+                }
+                else
                 {
                     if (_da > 0)
                     {
@@ -110,29 +134,6 @@ namespace TestPlugin
                     }
                     else
                         _dr = PP.Tr;
-                }
-                else
-                {
-                    if (_da == PP.Ta && _dr == PP.Tr)
-                    {
-                        // attack end => release
-                        _da = 0;
-                        _dr--;
-                        tf = Math.Exp(-1 / (_dr / PP.Tr * SampleRate * 0.001));
-                    }
-                    else if (_dr > 0 && _dr < PP.Tr)
-                    {
-                        // release
-                        _dr--;
-                        tf = Math.Exp(-1 / (_dr / PP.Tr * SampleRate * 0.001));
-                    }
-                    else if (_da >= 0 && _da < PP.Ta)
-                    {
-                        // release end || attack
-                        _da++;
-                        _dr = PP.Tr;
-                        tf = Math.Exp(-1 / (_da / PP.Ta * SampleRate * 0.001));
-                    }
                 }
 
                 _tfs.Add(tf);

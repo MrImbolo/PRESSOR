@@ -131,7 +131,7 @@ namespace TestPlugin
                 Name = "Knee",
                 Label = "Knee",
                 ShortLabel = "db to db",
-                MinInteger = 1,
+                MinInteger = 0,
                 MaxInteger = 10,
                 StepInteger = 1,
                 LargeStepInteger = 1,
