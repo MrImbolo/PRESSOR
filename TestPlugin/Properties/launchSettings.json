@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "TestPlugin": {
+      "commandName": "Project",
+      "environmentVariables": {
+        "DEBUG": "true"
+      }
+    }
+  }
+}

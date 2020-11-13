@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Reflection.Metadata.Ecma335;
 
-namespace TestPlugin
+namespace Pressor
 {
     public static class PressorMath
     {
@@ -49,8 +49,8 @@ namespace TestPlugin
             => 2 * (env - t) < -w
                 ? 0
                 : (2 * Math.Abs(env - t) <= w && w > 0)
-                    ? (1 / r - 1) * Math.Pow(env - t + w / 2, 2) / (2 * w)
-                    : env - (t + (env - t) / r);
+                    ? env + (1 / r - 1) * Math.Pow(env - t + w / 2, 2) / (2 * w)
+                    : (t + (env - t) / r);
 
     }
 }

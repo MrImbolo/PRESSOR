@@ -9,15 +9,8 @@ using System.Xml.Serialization;
 
 namespace TestPlugin
 {
-    public class PressorParams
+    public class PressorParameters
     {
-        private int _sampleCount = 0;
-        private double _gainReduction;
-
-        //private int _attackCounter;
-        //private int _releaseCounter;
-        public int SampleCount { get => _sampleCount; private set => _sampleCount = (value < int.MaxValue) ? value : 0; }
-
         private readonly VstParameterManager _thresholdMgr;
         private readonly VstParameterManager _ratioMgr;
         private readonly VstParameterManager _attackMgr;
@@ -26,7 +19,7 @@ namespace TestPlugin
         private readonly VstParameterManager _makeupMgr;
 
 
-        public PressorParams(VstParameterInfoCollection parameters) 
+        public PressorParameters(VstParameterInfoCollection parameters) 
         {
             if (parameters == null || !parameters.Any())
                 throw new ArgumentNullException(
@@ -45,7 +38,7 @@ namespace TestPlugin
         }
 
         /// <summary>
-        /// Put all intial plugin managers values into fields
+        /// Put all intial plugin manager's values into fields
         /// </summary>
         private void SetUpInitialValues()
         {
@@ -124,52 +117,36 @@ namespace TestPlugin
         /// <summary>
         /// Lin value of db based Threshold scale
         /// </summary>
-        public double T { get; private set; }
+        public double T;
 
         /// <summary>
         /// Dbs to Db units Ratio scale
         /// </summary>
-        public double R { get; private set; }
-
-
-        /// <summary>
-        /// Reduction level that must not be 0 and is a ratio between (input - threshold) / (output - threshold) difference 
-        /// </summary>
-        public double GainReduction {
-            get => _gainReduction;
-            //set => _gainReduction = value > Knee && Knee > 0 ? Math.Abs((value + Knee) / 2) : Math.Abs(value);
-            set => _gainReduction = Math.Abs(value);
-        }
-
+        public double R;
 
         /// <summary>
         /// Attack in sample units
         /// </summary>
-        public double Ta { get; private set; }
+        public double Ta;
 
         /// <summary>
         /// Release in sample units
         /// </summary>
-        public double Tr { get; private set; }
-        ///// <summary>
-        ///// Attack in sample units
-        ///// </summary>
-        //public double AttackRatio => Math.Exp(Math.Log(0.01) / (Ta * _sampleRate * 0.001));
-
-        ///// <summary>
-        ///// Release in sample units
-        ///// </summary>
-        //public double ReleaseRatio => Math.Pow(0.01, 1.0 / Tr * _sampleRate * 0.001);
+        public double Tr;
 
         /// <summary>
         /// Cimpressor curve knee in dBs
         /// </summary>
-        public double W { get; private set; }
-        public double M { get; private set; }
-        public double Env { get; internal set; }
-        //public Point LastSample { get; internal set; }
-        public double SampleRate { get; set; }
+        public double W;
 
-        //public void SetSampleRate(double sR) => _sampleRate = sR;
+        /// <summary>
+        /// Pressor MakeUp Gain Width in dbs
+        /// </summary>
+        public double M;
+
+        /// <summary>
+        /// Project's sample rate
+        /// </summary>
+        public double SampleRate;
     }
 }

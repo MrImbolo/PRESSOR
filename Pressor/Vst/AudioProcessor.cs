@@ -6,7 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Security.Cryptography.X509Certificates;
 
-namespace TestPlugin
+namespace Pressor
 {
     /// <summary>
     /// This class manages the plugin audio processing.
@@ -16,7 +16,7 @@ namespace TestPlugin
         [System.Diagnostics.CodeAnalysis.SuppressMessage("CodeQuality", "IDE0052:Remove unread private members", Justification = "Library code")]
         private readonly Plugin _plugin;
 
-        public VstParameterInfoCollection ParameterInfos { get; }
+        public VstParameterInfoCollection ParameterInfos { get => _plugin.ParameterFactory.ParameterInfos; }
 
         public PressorParameters PP { get; }
 
@@ -29,7 +29,6 @@ namespace TestPlugin
         {
             _plugin = plugin;
 
-            ParameterInfos = new VstParameterInfoCollection();
             InitializeParameterInfos();
 
             PP = new PressorParameters(ParameterInfos);
@@ -37,7 +36,7 @@ namespace TestPlugin
             int i = 0;
             while(i < InputCount)
             {
-                PressorChannels.Add(new Pressor(PP));
+                ChannelPressors.Add(new Pressor(PP));
                 i++;
             }
         }
@@ -45,7 +44,7 @@ namespace TestPlugin
         /// <summary>
         /// Gets the Pressor.
         /// </summary>
-        public List<Pressor> PressorChannels { get; } = new List<Pressor>();
+        public List<Pressor> ChannelPressors { get; } = new List<Pressor>();
 
         /// <summary>
         /// Gets or sets the sample rate.
@@ -173,7 +172,7 @@ namespace TestPlugin
             }
 
             for (int i = 0; i < inChannels.Length; i++)
-                PressorChannels[i].ProcessChannel(inChannels[i], outChannels[i]);
+                ChannelPressors[i].ProcessChannel(inChannels[i], outChannels[i]);
         }
     }
     public static class VstAudioBufferExtensions

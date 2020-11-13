@@ -5,6 +5,10 @@
     <Platforms>x86;x64</Platforms>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="VST.NET2-Plugin" Version="2.0.0-rc2" />
   </ItemGroup>

@@ -6,7 +6,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 
-namespace Pressor
+namespace PressorUI
 {
     /// <summary>
     /// Interaction logic for App.xaml

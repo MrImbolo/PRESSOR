@@ -10,7 +10,7 @@ using System.Runtime.InteropServices.ComTypes;
 using System.Text;
 using System.Threading;
 
-namespace TestPlugin
+namespace Pressor
 {
     public enum ECompState
     {
@@ -94,16 +94,6 @@ namespace TestPlugin
         /// <param name="sampleRate">Sample rate</param>
         public static void HandlePressorState(PressorParameters pp, PressorState ps, double sampleRate)
         {
-            bool isAttack = ps.Da > 0 && ps.Da < pp.Ta;
-            bool isAttackEnd = ps.Da == pp.Ta;
-
-            bool isRelease = ps.Dr > 0 && ps.Dr < pp.Tr;
-            bool isReleaseEnd = ps.Dr == 0;
-
-            bool isNotReleaseYet = ps.Dr == pp.Tr;
-
-            bool isReduction = isAttack & isNotReleaseYet;
-
             if (ps.GRDb != 0)
             {
                 if (ps.Da == pp.Ta && ps.Dr == pp.Tr)
