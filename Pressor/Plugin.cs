@@ -14,14 +14,14 @@ namespace Pressor
         public PluginParameterFactory ParameterFactory { get; set; }
 
         public Plugin() 
-            : base("Pressor - thesis sample compressor", new FourCharacterCode("PRSR").ToInt32(), 
-                  new VstProductInfo("Sound Engineering Thesis", "@MrImbolo aka Daniel Zotov @ 2020", 1002), 
+            : base("Pressor - thesis sample comp", new FourCharacterCode("PRSR").ToInt32(), 
+                  new VstProductInfo("Sound Engineering Thesis", "@MrImbolo aka Daniel Zotov @ 2020", 1001), 
                   VstPluginCategory.Mastering)
         {
             ParameterFactory = new PluginParameterFactory();
             var audioProcessor = GetInstance<AudioProcessor>();
 
-            //ParameterFactory.ParameterInfos.AddRange(audioProcessor.ParameterInfos);
+            ParameterFactory.ParameterInfos.AddRange(audioProcessor.PP.Parameters);
         }
 
         protected override void ConfigureServices(IServiceCollection services)

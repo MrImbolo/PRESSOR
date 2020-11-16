@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace TestPlugin
+namespace Pressor
 {
     internal static class DBFSConvert
     {
@@ -23,7 +23,7 @@ namespace TestPlugin
         /// <returns></returns>
         public static double ToExpanent(double val)
         {
-            var volume = (double) Math.Pow(_epsilon, 1 - val);
+            var volume = (double)Math.Pow(_epsilon, 1 - val);
             return volume > _epsilon ? volume : 0;
         }
 
@@ -32,22 +32,22 @@ namespace TestPlugin
         /// </summary>
         /// <param name="volume"></param>
         /// <returns></returns>
-        public static double FromExpanent(double volume) 
-            => 1 - (double) Math.Log(Math.Max(volume, _epsilon)) / (double)Math.Log(_epsilon);
+        public static double FromExpanent(double volume)
+            => 1 - (double)Math.Log(Math.Max(volume, _epsilon)) / (double)Math.Log(_epsilon);
 
         /// <summary>
         /// Exponential scale convertion to Dbs
         /// </summary>
         /// <param name="val"></param>
         /// <returns></returns>
-        public static double LinToDb(double val) => (double) (20 * Math.Log10(val));
+        public static double LinToDb(double val) => (double)(20 * Math.Log10(val));
 
         /// <summary>
         /// From Dbs to exponential scale
         /// </summary>
         /// <param name="dbfs"></param>
         /// <returns></returns>
-        public static double DbToLin(double dbfs) => (double) Math.Pow(10, 0.05 * dbfs);
+        public static double DbToLin(double dbfs) => (double)Math.Pow(10, 0.05 * dbfs);
 
         /// <summary>
         /// Calculates scale position from dbs spl (-60 == 0)

@@ -10,7 +10,7 @@ using System.Runtime.InteropServices.ComTypes;
 using System.Text;
 using System.Threading;
 
-namespace TestPlugin
+namespace Pressor
 {
     public enum ECompState
     {
@@ -38,6 +38,8 @@ namespace TestPlugin
         /// </summary>
         private PressorParameters PP { get; }
 
+        public StateCoefCounter StateCoefCounter { get; }
+
         /// <summary>
         /// Gets or sets the sample rate.
         /// </summary>
@@ -55,6 +57,7 @@ namespace TestPlugin
         {
             PP = pp;
             PS = new PressorState();
+            StateCoefCounter = new StateCoefCounter(PP, PS);
         }
 
         public void ProcessChannel(VstAudioBuffer inBuffer, VstAudioBuffer outBuffer)
@@ -75,10 +78,11 @@ namespace TestPlugin
                 PS.DbEnv = DBFSConvert.LinToDb(PS.AvgEnv);
                 PS.GRDb = Math.Abs(PressorMath.GR(PS.DbEnv, PP.T, PP.R, PP.W));
 
-                HandlePressorState(PP, PS, SampleRate);
+                //HandlePressorState(PP, PS, SampleRate);
+                PS.Tf = StateCoefCounter.Count();
 
-                PS.GR = DBFSConvert.DbToLin(Math.CopySign(PS.GRDb * PS.Tf, -1));
-                PS.Y = (float)(PressorMath.OPFilter(0.63, PS.GR, PS.LastY) / DBFSConvert.DbToLin(-PP.M));
+                PS.GR = DBFSConvert.DbToLin(-(PS.GRDb * PS.Tf));
+                PS.Y = (float)(PressorMath.OPFilter(0.63, PS.X * PS.GR, PS.LastY) / DBFSConvert.DbToLin(-PP.M));
                 PS.LastY = PS.Y;
 
                 outBuffer[i] = (float)PS.Y;
@@ -94,16 +98,6 @@ namespace TestPlugin
         /// <param name="sampleRate">Sample rate</param>
         public static void HandlePressorState(PressorParameters pp, PressorState ps, double sampleRate)
         {
-            bool isAttack = ps.Da > 0 && ps.Da < pp.Ta;
-            bool isAttackEnd = ps.Da == pp.Ta;
-
-            bool isRelease = ps.Dr > 0 && ps.Dr < pp.Tr;
-            bool isReleaseEnd = ps.Dr == 0;
-
-            bool isNotReleaseYet = ps.Dr == pp.Tr;
-
-            bool isReduction = isAttack & isNotReleaseYet;
-
             if (ps.GRDb != 0)
             {
                 if (ps.Da == pp.Ta && ps.Dr == pp.Tr)
@@ -180,7 +174,7 @@ namespace TestPlugin
         {
 
 #if DEBUG
-            _thresholds.Add(PP.T);
+            _thresholds.Add(PP.T); 
             _inputs.Add(PS.X);
             _envs.Add(PS.AvgEnv);
             _dbEnvs.Add(PS.DbEnv);
@@ -196,18 +190,17 @@ namespace TestPlugin
         }
         #endregion
     }
-    public class StateCoefCouner
+    public class StateCoefCounter
     {
         private readonly PressorParameters _pp;
         private readonly PressorState _ps;
-        private readonly double _sampleRate;
+        private double SampleRate => _pp.SampleRate;
         public ECompState State = ECompState.Bypass;
 
-        public StateCoefCouner(PressorParameters pp, PressorState ps, double sampleRate)
+        public StateCoefCounter(PressorParameters pp, PressorState ps)
         {
             _pp = pp;
             _ps = ps;
-            _sampleRate = sampleRate;
         }
     
         public double Count()
@@ -225,14 +218,14 @@ namespace TestPlugin
         public double DeltaAttackTauFunc()
         {
             if (_ps.Da != 0 && _pp.Ta != 0)
-                return Math.Exp(-1 / (_ps.Da / _pp.Ta * _sampleRate * 0.001));
+                return Math.Exp(-1 / (_ps.Da / _pp.Ta * SampleRate * 0.001));
 
             return _ps.Tf;
         }
         public double DeltaReleaseTauFunc()
         {
             if (_ps.Dr != 0 && _pp.Tr != 0)
-                return Math.Exp(-1 / (_ps.Dr / _pp.Tr * _sampleRate * 0.001));
+                return Math.Exp(-1 / (_ps.Dr / _pp.Tr * SampleRate * 0.001));
 
             return _ps.Tf;
         }

@@ -1,13 +1,9 @@
 ﻿using Jacobi.Vst.Plugin.Framework;
-using Microsoft.VisualBasic;
 using System;
 using System.ComponentModel;
-using System.ComponentModel.DataAnnotations;
-using System.Drawing;
 using System.Linq;
-using System.Xml.Serialization;
 
-namespace TestPlugin
+namespace Pressor
 {
     public class PressorParameters
     {
@@ -18,19 +14,113 @@ namespace TestPlugin
         private readonly VstParameterManager _kneeMgr;
         private readonly VstParameterManager _makeupMgr;
 
-
-        public PressorParameters(VstParameterInfoCollection parameters) 
+        private VstParameterInfoCollection _parameters;
+        public PressorParameters() 
         {
-            if (parameters == null || !parameters.Any())
-                throw new ArgumentNullException(
-                    $"{nameof(VstParameterInfoCollection)} type variable value is {parameters?.Count.ToString() ?? "null"}");
+            _parameters = new VstParameterInfoCollection();
 
-            _thresholdMgr = parameters.ElementAt(0).Normalize().ToManager();
-            _ratioMgr = parameters.ElementAt(1).Normalize().ToManager();
-            _attackMgr = parameters.ElementAt(2).Normalize().ToManager();
-            _releaseMgr = parameters.ElementAt(3).Normalize().ToManager();
-            _kneeMgr = parameters.ElementAt(4).Normalize().ToManager();
-            _makeupMgr = parameters.ElementAt(5).Normalize().ToManager();
+            #region params
+
+            var threshInfo = new VstParameterInfo
+            {
+                CanBeAutomated = true,
+                Name = "Thrshld",
+                Label = "Threshold",
+                ShortLabel = "lin2dbs",
+                MinInteger = 0,
+                MaxInteger = 60,
+                SmallStepFloat = 0.1f,
+                StepFloat = 1f,
+                LargeStepFloat = 3f,
+                DefaultValue = -6,
+            };
+            _parameters.Add(threshInfo);
+
+
+            var ratInfo = new VstParameterInfo
+            {
+                CanBeAutomated = true,
+                Name = "Ratio",
+                Label = "Ratio",
+                ShortLabel = ":1",
+                MinInteger = 1,
+                MaxInteger = 60,
+                StepInteger = 1,
+                LargeStepInteger = 3,
+                DefaultValue = 4f,
+            };
+            _parameters.Add(ratInfo);
+
+
+            var attInfo = new VstParameterInfo
+            {
+                CanBeAutomated = true,
+                Name = "Attack",
+                Label = "Attack",
+                ShortLabel = "ms",
+                MinInteger = 1,
+                MaxInteger = 1000,
+                StepInteger = 1,
+                LargeStepInteger = 10,
+                DefaultValue = 50f,
+            };
+            _parameters.Add(attInfo);
+
+            var relInfo = new VstParameterInfo
+            {
+                CanBeAutomated = true,
+                CanRamp = true,
+                Name = "Release",
+                Label = "Release",
+                ShortLabel = "ms",
+                MinInteger = 1,
+                MaxInteger = 1000,
+                StepInteger = 1,
+                LargeStepInteger = 10,
+                DefaultValue = 50f,
+            };
+
+            _parameters.Add(relInfo);
+
+
+            var kneeInfo = new VstParameterInfo
+            {
+                CanBeAutomated = true,
+                CanRamp = true,
+                Name = "Knee",
+                Label = "Knee",
+                ShortLabel = "db to db",
+                MinInteger = 0,
+                MaxInteger = 10,
+                StepInteger = 1,
+                LargeStepInteger = 1,
+                DefaultValue = 1,
+            };
+            _parameters.Add(kneeInfo);
+
+            var mGainInfo = new VstParameterInfo
+            {
+                CanBeAutomated = true,
+                CanRamp = true,
+                Name = "MkGain",
+                Label = "MakeUpGain",
+                ShortLabel = "dbs",
+                MinInteger = 0,
+                MaxInteger = 60,
+                StepInteger = 1,
+                LargeStepInteger = 1,
+                DefaultValue = 0,
+            };
+            _parameters.Add(mGainInfo);
+
+            #endregion
+
+            _thresholdMgr = _parameters.ElementAt(0).Normalize().ToManager();
+            _ratioMgr = _parameters.ElementAt(1).Normalize().ToManager();
+            _attackMgr = _parameters.ElementAt(2).Normalize().ToManager();
+            _releaseMgr = _parameters.ElementAt(3).Normalize().ToManager();
+            _kneeMgr = _parameters.ElementAt(4).Normalize().ToManager();
+            _makeupMgr = _parameters.ElementAt(5).Normalize().ToManager();
 
             SetUpInitialValues();
 
@@ -148,5 +238,7 @@ namespace TestPlugin
         /// Project's sample rate
         /// </summary>
         public double SampleRate;
+
+        public VstParameterInfoCollection Parameters { get => _parameters; set => _parameters = value; }
     }
 }
