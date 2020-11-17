@@ -1,25 +1,26 @@
-﻿using System;
+﻿using Pressor.Calculations;
+using System;
 
 namespace Pressor.Logic
 {
-    public class StateCoefCounter
+    public class StateHandler
     {
         private readonly PressorParameters _pp;
         private readonly PressorState _ps;
         private double SampleRate => _pp.SampleRate;
         public ECompState State = ECompState.Bypass;
 
-        public StateCoefCounter(PressorParameters pp, PressorState ps)
+        public StateHandler(PressorParameters pp, PressorState ps)
         {
             _pp = pp;
             _ps = ps;
         }
     
-        public double Count()
+        public void CountTf()
         {
             RecountState();
 
-            return State switch
+            _ps.Tf =  State switch
             {
                 ECompState.Attack => DeltaAttackTauFunc(),
                 ECompState.Release => DeltaReleaseTauFunc(),
@@ -45,7 +46,7 @@ namespace Pressor.Logic
         {
             if (State == ECompState.Attack)
             {
-                if (_ps.GRDb != 0)
+                if (_ps.TempGRDb != 0)
                 {
                     if (_ps.Da < _pp.Ta)
                     {
@@ -63,14 +64,14 @@ namespace Pressor.Logic
             }
             else if (State == ECompState.Compressing)
             {
-                if (_ps.GRDb != 0)
+                if (_ps.TempGRDb != 0)
                     return;
                 
                 SetReleaseState();
             }
             else if (State == ECompState.Release)
             {
-                if (_ps.GRDb != 0)
+                if (_ps.TempGRDb != 0)
                 {
                     SetMomentaryAttackState();
                 }
@@ -89,7 +90,7 @@ namespace Pressor.Logic
             // consider bypass
             else if (State == ECompState.Bypass)
             {
-                if (_ps.GRDb == 0)
+                if (_ps.TempGRDb == 0)
                     return;
                 SetAttackState();
             }
@@ -134,6 +135,20 @@ namespace Pressor.Logic
             _ps.Dr = _pp.Tr;
             State = ECompState.Attack;
         }
+
+        /// <summary>
+        /// Counts state-depending and GR
+        /// </summary>
+        internal void CountGRDb()
+        {
+            var temp = (State == ECompState.Bypass)
+                ? 0
+                : CountStateGR();
+            _ps.GRDb = PressorMath.OPFilter(0.63, temp, _ps.GRDb);
+            // Count gain reduction multiplying gain reduction in dbs to tau function argument
+            _ps.GR = DBFSConvert.DbToLin(-(_ps.GRDb * _ps.Tf));
+        }
+        private double CountStateGR() => (_ps.TempGRDb > _ps.GRDb) ? _ps.Tf * _ps.TempGRDb : _ps.GRDb * _ps.Tf;
     }
     
 }

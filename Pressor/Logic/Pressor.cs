@@ -52,7 +52,9 @@ namespace Pressor.Logic
         /// <summary>
         /// State machine class
         /// </summary>
-        private StateCoefCounter _stateCoefCounter { get; }
+        private StateHandler SH => _stateHandlers[_currentChannel]; 
+
+        private StateHandler[] _stateHandlers;
 
         /// <summary>
         /// Proxy to get single pressor state, that matches current channel indexer
@@ -69,15 +71,15 @@ namespace Pressor.Logic
         {
             PP = new PressorParameters();
             _pressorStates = new PressorState[inputCount];
+            _stateHandlers = new StateHandler[inputCount];
 
             int i = 0;
             while(i < inputCount)
             {
                 _pressorStates[i] = new PressorState();
+                _stateHandlers[i] = new StateHandler(PP, _pressorStates[i]);
                 i++;
             }
-
-            _stateCoefCounter = new StateCoefCounter(PP, PS);
         }
 
         /// <summary>
@@ -103,22 +105,22 @@ namespace Pressor.Logic
                 PS.X = inBuffer[i];
 
                 // Count average envelope lvl
-                PS.AvgEnv = PressorMath.EnvFunc(PS.AvgEnv, Math.Abs(PS.X));
+                PS.AvgEnv = Math.Abs(PS.X);// PressorMath.EnvFunc(PS.AvgEnv, Math.Abs(PS.X));
 
                 // Convert absolute average envelope lvl to db scale
                 PS.DbEnv = DBFSConvert.LinToDb(PS.AvgEnv);
 
-                // Count Gaing reduction in dbs 
-                PS.GRDb = Math.Abs(PressorMath.GR(PS.DbEnv, PP.T, PP.R, PP.W));
-
+                // Count momentary gain reduction in dbs 
+                PS.TempGRDb = Math.Abs(PressorMath.GR(PS.DbEnv, PP.T, PP.R, PP.W));
+                
                 // Count tau function argument from current state using state machine
-                PS.Tf = _stateCoefCounter.Count();
+                SH.CountTf();
 
-                // Count gain reduction multiplying gain reduction in dbs to tau function argument
-                PS.GR = DBFSConvert.DbToLin(-(PS.GRDb * PS.Tf));
+                // Count GRDb according to stage
+                SH.CountGRDb();
 
                 // Count final sample through smoothing filter with respect of last final sample value
-                PS.Y = (float)(PressorMath.OPFilter(0.63, PS.X * PS.GR, PS.LastY) / DBFSConvert.DbToLin(-PP.M));
+                PS.Y = (float)(PressorMath.OPFilter(0.5, PS.X * PS.GR, PS.LastY) / DBFSConvert.DbToLin(-PP.M));
                 PS.LastY = PS.Y;
 
                 outBuffer[i] = (float)PS.Y;

@@ -50,6 +50,11 @@ namespace Pressor.Logic
         public double GR { get; set; } = 1.0;
 
         /// <summary>
+        /// Momentary GainReduction for the state detecting
+        /// </summary>
+        public double TempGRDb { get; set; }
+
+        /// <summary>
         /// Gain Reduction in dBs
         /// </summary>
         public double GRDb { get; set; }
