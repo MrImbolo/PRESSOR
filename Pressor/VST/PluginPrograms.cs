@@ -1,7 +1,7 @@
 ﻿using Jacobi.Vst.Plugin.Framework;
 using Jacobi.Vst.Plugin.Framework.Plugin;
 
-namespace Pressor
+namespace Pressor.VST
 {
     internal sealed class PluginPrograms : VstPluginPrograms
     {

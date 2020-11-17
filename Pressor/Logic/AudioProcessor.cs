@@ -1,11 +1,8 @@
 ﻿using Jacobi.Vst.Core;
-using Jacobi.Vst.Plugin.Framework;
 using Jacobi.Vst.Plugin.Framework.Plugin;
-using System;
-using System.Collections.Generic;
-using System.Linq;
+using Pressor.VST;
 
-namespace Pressor
+namespace Pressor.Logic
 {
     /// <summary>
     /// This class manages the plugin audio processing.
@@ -15,7 +12,11 @@ namespace Pressor
         [System.Diagnostics.CodeAnalysis.SuppressMessage("CodeQuality", "IDE0052:Remove unread private members", Justification = "Library code")]
         private readonly Plugin _plugin;
 
-        public PressorParameters PP { get; }
+        /// <summary>
+        /// Compressor instance
+        /// </summary>
+        public Pressor _pressor;
+
 
         /// <summary>
         /// Constructs a new instance.
@@ -25,21 +26,10 @@ namespace Pressor
             : base(2, 2, 0, noSoundInStop: true)
         {
             _plugin = plugin;
-
-            PP = new PressorParameters();
-
-            int i = 0;
-            while (i < InputCount)
-            {
-                ChannelPressors.Add(new Pressor(PP));
-                i++;
-            }
+            _pressor = new Pressor(InputCount);
         }
 
-        /// <summary>
-        /// Gets the Pressors.
-        /// </summary>
-        public List<Pressor> ChannelPressors { get; } = new List<Pressor>();
+        public PressorParameters PP => _pressor.PP;
 
         /// <summary>
         /// Gets or sets the sample rate.
@@ -47,11 +37,9 @@ namespace Pressor
         /// <remarks>This property is a proxy for the <see cref="T:Pressor.PressorParameters.SampleRate"/> property.</remarks>
         public override float SampleRate
         {
-            get { return (float)PP.SampleRate; }
-            set { PP.SampleRate = value; }
+            get => (float)PP.SampleRate;
+            set => PP.SampleRate = value;
         }
-
-
 
         /// <summary>
         /// Perform audio processing on the specified <paramref name="inChannels"/> 
@@ -69,19 +57,7 @@ namespace Pressor
             }
 
             for (int i = 0; i < inChannels.Length; i++)
-                ChannelPressors[i].ProcessChannel(inChannels[i], outChannels[i]);
-        }
-    }
-    public static class VstAudioBufferExtensions
-    {
-        public static bool IsEmpty(this VstAudioBuffer[] channels) => channels.All(x => x[0] == 0 && x[x.SampleCount - 1] == 0);
-        public static double AvgEnv(this VstAudioBuffer buffer)
-        {
-            double[] lvls = new double[buffer.SampleCount];
-            for (int i = 0; i < buffer.SampleCount; i++)
-                lvls[i] = Math.Abs(buffer[i]);
-
-            return lvls.Average();
+                _pressor.ProcessChannel(inChannels[i], outChannels[i], i);
         }
     }
 }

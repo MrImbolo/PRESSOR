@@ -1,13 +1,13 @@
 ﻿using Jacobi.Vst.Core;
-using Jacobi.Vst.Core.Plugin;
 using Jacobi.Vst.Plugin.Framework;
 using Jacobi.Vst.Plugin.Framework.Plugin;
 using Microsoft.Extensions.DependencyInjection;
+using Pressor.Logic;
 
-namespace Pressor
+namespace Pressor.VST
 {
     /// <summary>
-    /// Testing plugin for fun
+    /// Pressor plugin derived class
     /// </summary>
     internal sealed class Plugin : VstPluginWithServices
     {

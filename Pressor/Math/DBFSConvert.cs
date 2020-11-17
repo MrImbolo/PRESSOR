@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Pressor
+namespace Pressor.Calculations
 {
     internal static class DBFSConvert
     {

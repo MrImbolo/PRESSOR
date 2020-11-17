@@ -4,7 +4,7 @@ using Jacobi.Vst.Plugin.Framework.Plugin.IO;
 using System.IO;
 using System.Text;
 
-namespace Pressor
+namespace Pressor.VST
 {
     internal sealed class PluginPersistence : VstPluginPersistence
     {

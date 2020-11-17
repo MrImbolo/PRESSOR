@@ -1,14 +1,12 @@
 ﻿using System;
 using System.Reflection.Metadata.Ecma335;
 
-namespace Pressor
+namespace Pressor.Calculations
 {
     public static class PressorMath
     {
         public const double CQuadraticExp = 2;
-        public const double CWEnv = 0.35;
-        public static double LogReverseFunc(double a, double b) => Math.Log(b - a + 1) / Math.Log(b + 1);
-        public static double StraightQuadFunc(double a, double b) => Math.Pow(a, CQuadraticExp) / Math.Pow(b, CQuadraticExp);
+        public const double CWEnv = 0.37;
 
         /// <summary>
         /// Count envelope in absolute values

@@ -1,6 +1,6 @@
 ﻿using Jacobi.Vst.Plugin.Framework;
 
-namespace Pressor
+namespace Pressor.VST
 {
     internal sealed class PluginParameterFactory
     {

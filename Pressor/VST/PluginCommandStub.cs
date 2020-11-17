@@ -1,12 +1,7 @@
 ﻿using Jacobi.Vst.Plugin.Framework;
 using Jacobi.Vst.Plugin.Framework.Plugin;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace Pressor
+namespace Pressor.VST
 {
     /// <summary>
     /// The public Plugin Command Stub implementation derived from the framework provided <see cref="StdPluginCommandStub"/>.

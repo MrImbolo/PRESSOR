@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Pressor
+namespace Pressor.Logic
 {
     public class PressorState
     {

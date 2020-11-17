@@ -3,7 +3,7 @@ using System;
 using System.ComponentModel;
 using System.Linq;
 
-namespace Pressor
+namespace Pressor.Logic
 {
     public class PressorParameters
     {
