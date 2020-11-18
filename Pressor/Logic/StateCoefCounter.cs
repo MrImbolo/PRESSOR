@@ -61,30 +61,9 @@ namespace Pressor.Logic
                 {
                     SetReleaseState();
                 }
-                //if (_ps.IsExceeded)
-                //{
-                //}
-                //else
-                //{
-                //    SetMomentaryReleaseState();
-                //}
             }
-            //else if (State == ECompState.Compressing)
-            //{
-            //    if (_ps.IsExceeded)
-            //        return;
-                
-            //    SetReleaseState();
-            //}
             else if (State == ECompState.Release)
             {
-                //if (_ps.IsExceeded)
-                //{
-                //    SetMomentaryAttackState();
-                //}
-                //else
-                //{
-                //}
                 if (_ps.Dr > 0)
                 {
                     _ps.Dr--;
@@ -149,12 +128,11 @@ namespace Pressor.Logic
         /// </summary>
         internal void CountGRDb()
         {
-            _ps.TempGRDb = (_ps.IsExceeded) ? PressorCalc.GR(_ps.EnvDb, _pp.T, _pp.R, _pp.W) : _ps.GRDb;
+            _ps.TempYDb = PressorCalc.YDb(_ps.EnvDb, _pp.T, _pp.R, _pp.W);
 
-            _ps.GRDb = PressorCalc.OPFilter(StateAlpha, _ps.TempGRDb * _ps.Tf, _ps.GRDb);
-                
-            _ps.GR = DBFSConvert.DbToLin(-_ps.GRDb);
+            _ps.YDb = _ps.TempYDb;
             
+            _ps.Y = PressorCalc.OPFilter(_ps.Tf, Math.CopySign(DBFSConvert.DbToLin(_ps.YDb), _ps.X), _ps.X);
         }
     }
     

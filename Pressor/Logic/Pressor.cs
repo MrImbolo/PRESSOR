@@ -29,7 +29,7 @@ namespace Pressor.Logic
 
         private List<double> _thresholds = new List<double>();
         private List<double> _dbEnvs = new List<double>();
-        private List<double> _grs = new List<double>();
+        private List<double> _ydbs = new List<double>();
 
 #endif
         #endregion
@@ -124,8 +124,8 @@ namespace Pressor.Logic
                 // Count GRDb according to stage
                 SH.CountGRDb();
 
-                // Count final sample through smoothing filter with respect of last final sample value
-                PS.Y = (float)(PressorCalc.OPFilter(0.5, PS.X * PS.GR, PS.LastY) / DBFSConvert.DbToLin(-PP.M));
+                //// Count final sample through smoothing filter with respect of last final sample value
+                //PS.Y = (float)(PressorCalc.OPFilter(0.5, PS.X * PS.GR, PS.LastY) / DBFSConvert.DbToLin(-PP.M));
                 PS.LastY = PS.Y;
 
                 outBuffer[i] = (float)PS.Y;
@@ -156,7 +156,7 @@ namespace Pressor.Logic
 
             _thresholds.Clear();
             _dbEnvs.Clear();
-            _grs.Clear();
+            _ydbs.Clear();
 #endif
         }
         public void WriteDebugListsInfo()
@@ -171,12 +171,12 @@ namespace Pressor.Logic
 
             _thresholds.Add(PP.T); 
             _dbEnvs.Add(PS.EnvDb);
-            _grs.Add(PS.GRDb);
+            _ydbs.Add(PS.YDb);
 
 
-            if (double.IsNaN(PS.Y))
-                Debug.WriteLine($"Final sample is NaN, values were:{Environment.NewLine}" +
-                    $"{Stringify4Log((nameof(PS.X), PS.X), (nameof(PS.GRDb), PS.GRDb), (nameof(PS.Env), PS.Env), (nameof(PS.Tf), PS.Tf), (nameof(PS.LastY), PS.LastY))}");
+            //if (double.IsNaN(PS.Y))
+            //    Debug.WriteLine($"Final sample is NaN, values were:{Environment.NewLine}" +
+            //        $"{Stringify4Log((nameof(PS.X), PS.X), (nameof(PS.Yi), PS.Yi), (nameof(PS.Env), PS.Env), (nameof(PS.Tf), PS.Tf), (nameof(PS.LastY), PS.LastY))}");
 #endif
         }
         #endregion

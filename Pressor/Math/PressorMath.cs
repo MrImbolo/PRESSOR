@@ -44,19 +44,19 @@ namespace Pressor.Calculations
         /// <param name="r"></param>
         /// <param name="w"></param>
         /// <returns></returns>
-        public static double GR(double env, double t, double r, double w)
+        public static double YDb(double env, double t, double r, double w)
         {
             if (2 * (env - t) < -w)
             {
-                return 0;
+                return env;
             }
             else if (2 * Math.Abs(env - t) <= w && w > 0)
             {
-                return (1 / r - 1) * Math.Pow(env - t + w / 2, 2) / (2 * w);
+                return (env + (1 / r - 1) * Math.Pow(env - t + w / 2, 2) / (2 * w));
             }
             else
             {
-                return env - (t + (env - t) / r);
+                return (t + (env - t) / r);
             }
         }
 

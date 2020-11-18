@@ -50,14 +50,14 @@ namespace Pressor.Logic
         public double GR { get; set; } = 1.0;
 
         /// <summary>
-        /// Momentary GainReduction for the state detecting
+        /// Inbetween Y value in db
         /// </summary>
-        public double TempGRDb { get; set; }
+        public double TempYDb { get; set; }
 
         /// <summary>
-        /// Gain Reduction in dBs
+        /// Y in dBs
         /// </summary>
-        public double GRDb { get; set; }
+        public double YDb { get; set; }
 
         /// <summary>
         /// Tau-coefficient for current compressor state
