@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
 using Pressor.Calculations;
+using System.Linq;
 
 namespace Pressor.Logic
 {
@@ -11,21 +12,25 @@ namespace Pressor.Logic
     {
         Bypass,
         Attack, 
+        Compressing,
         Release,
-        Compressing
     }
     internal sealed class Pressor
     {
 
         #region DEBUG_LISTS_DECLARATION
 #if DEBUG
-        private List<double> _inputs = new List<double>();
-        private List<double> _dbEnvs = new List<double>();
         private List<double> _envs = new List<double>();
-        private List<double> _grs = new List<double>();
+        private List<double> _inputs = new List<double>();
         private List<double> _outputs = new List<double>();
-        private List<double> _thresholds = new List<double>();
         private List<double> _tfs = new List<double>();
+        private List<double> _states = new List<double>();
+
+
+        private List<double> _thresholds = new List<double>();
+        private List<double> _dbEnvs = new List<double>();
+        private List<double> _grs = new List<double>();
+
 #endif
         #endregion
 
@@ -94,24 +99,24 @@ namespace Pressor.Logic
 
             _currentChannel = currentChannel;
 
-            if (PS.AvgEnv == 0)
-                PS.AvgEnv = inBuffer.AvgEnv();
+            if (PS.Env == 0)
+                PS.Env = inBuffer.AvgEnv();
 
             if (PS.LastY == 0)
-                PS.LastY = PS.AvgEnv;
+                PS.LastY = PS.Env;
 
             for (var i = 0; i < inBuffer.SampleCount; i++)
             {
                 PS.X = inBuffer[i];
 
                 // Count average envelope lvl
-                PS.AvgEnv = Math.Abs(PS.X);// PressorMath.EnvFunc(PS.AvgEnv, Math.Abs(PS.X));
+                PS.Env = PressorCalc.EnvFunc(Math.Abs(PS.X), PS.Env);
 
                 // Convert absolute average envelope lvl to db scale
-                PS.DbEnv = DBFSConvert.LinToDb(PS.AvgEnv);
+                PS.EnvDb = DBFSConvert.LinToDb(PS.Env);
 
                 // Count momentary gain reduction in dbs 
-                PS.TempGRDb = Math.Abs(PressorMath.GR(PS.DbEnv, PP.T, PP.R, PP.W));
+                PS.IsExceeded = PressorCalc.DetectEnvExceed(PS.EnvDb, PP.T, PP.W);
                 
                 // Count tau function argument from current state using state machine
                 SH.CountTf();
@@ -120,7 +125,7 @@ namespace Pressor.Logic
                 SH.CountGRDb();
 
                 // Count final sample through smoothing filter with respect of last final sample value
-                PS.Y = (float)(PressorMath.OPFilter(0.5, PS.X * PS.GR, PS.LastY) / DBFSConvert.DbToLin(-PP.M));
+                PS.Y = (float)(PressorCalc.OPFilter(0.5, PS.X * PS.GR, PS.LastY) / DBFSConvert.DbToLin(-PP.M));
                 PS.LastY = PS.Y;
 
                 outBuffer[i] = (float)PS.Y;
@@ -143,31 +148,35 @@ namespace Pressor.Logic
         {
 
 #if DEBUG
-            _inputs.Clear();
-            _dbEnvs.Clear();
             _envs.Clear();
-            _grs.Clear();
+            _inputs.Clear();
             _outputs.Clear();
-            _thresholds.Clear();
             _tfs.Clear();
+            _states.Clear();
+
+            _thresholds.Clear();
+            _dbEnvs.Clear();
+            _grs.Clear();
 #endif
         }
         public void WriteDebugListsInfo()
         {
 
 #if DEBUG
-            _thresholds.Add(PP.T); 
+            _envs.Add(PS.Env);
             _inputs.Add(PS.X);
-            _envs.Add(PS.AvgEnv);
-            _dbEnvs.Add(PS.DbEnv);
-            _grs.Add(PS.GRDb);
-            _tfs.Add(PS.Tf);
             _outputs.Add(PS.Y);
+            _tfs.Add(PS.Tf);
+            _states.Add((double)SH.State);
+
+            _thresholds.Add(PP.T); 
+            _dbEnvs.Add(PS.EnvDb);
+            _grs.Add(PS.GRDb);
 
 
             if (double.IsNaN(PS.Y))
                 Debug.WriteLine($"Final sample is NaN, values were:{Environment.NewLine}" +
-                    $"{Stringify4Log((nameof(PS.X), PS.X), (nameof(PS.GRDb), PS.GRDb), (nameof(PS.AvgEnv), PS.AvgEnv), (nameof(PS.Tf), PS.Tf), (nameof(PS.LastY), PS.LastY))}");
+                    $"{Stringify4Log((nameof(PS.X), PS.X), (nameof(PS.GRDb), PS.GRDb), (nameof(PS.Env), PS.Env), (nameof(PS.Tf), PS.Tf), (nameof(PS.LastY), PS.LastY))}");
 #endif
         }
         #endregion

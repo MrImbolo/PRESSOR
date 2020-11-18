@@ -22,7 +22,7 @@ namespace Pressor.Logic
         /// <summary>
         /// Current envelope in dbs
         /// </summary>
-        public double DbEnv { get; internal set; }
+        public double EnvDb { get; internal set; }
 
         /// <summary>
         /// Delta of the attack
@@ -42,7 +42,7 @@ namespace Pressor.Logic
         /// <summary>
         /// Average envelope level till now
         /// </summary>
-        public double AvgEnv { get; set; }
+        public double Env { get; set; }
 
         /// <summary>
         /// Gain reduction absolute
@@ -63,5 +63,10 @@ namespace Pressor.Logic
         /// Tau-coefficient for current compressor state
         /// </summary>
         public double Tf { get; set; }
+
+        /// <summary>
+        /// Envelope exceedence flag
+        /// </summary>
+        public bool IsExceeded { get; set; }
     }
 }

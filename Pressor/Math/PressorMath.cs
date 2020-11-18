@@ -1,9 +1,10 @@
 ﻿using System;
+using System.Net.NetworkInformation;
 using System.Reflection.Metadata.Ecma335;
 
 namespace Pressor.Calculations
 {
-    public static class PressorMath
+    public static class PressorCalc
     {
         public const double CQuadraticExp = 2;
         public const double CWEnv = 0.37;
@@ -14,7 +15,7 @@ namespace Pressor.Calculations
         /// <param name="env"></param>
         /// <param name="sample"></param>
         /// <returns></returns>
-        public static double EnvFunc(double env, double sample) => OPFilter(CWEnv, sample, env);
+        public static double EnvFunc(double sample, double env) => OPFilter(CWEnv, sample, env);
 
         /// <summary>
         /// Smooth filter for curves
@@ -43,12 +44,29 @@ namespace Pressor.Calculations
         /// <param name="r"></param>
         /// <param name="w"></param>
         /// <returns></returns>
-        public static double GR(double env, double t, double r, double w) 
-            => 2 * (env - t) < -w
-                ? 0
-                : (2 * Math.Abs(env - t) <= w && w > 0)
-                    ? (1 / r - 1) * Math.Pow(env - t + w / 2, 2) / (2 * w)
-                    : env - (t + (env - t) / r);
+        public static double GR(double env, double t, double r, double w)
+        {
+            if (2 * (env - t) < -w)
+            {
+                return 0;
+            }
+            else if (2 * Math.Abs(env - t) <= w && w > 0)
+            {
+                return (1 / r - 1) * Math.Pow(env - t + w / 2, 2) / (2 * w);
+            }
+            else
+            {
+                return env - (t + (env - t) / r);
+            }
+        }
 
+        /// <summary>
+        /// Finds out whether env is exceeding threshold or not depending on T and W
+        /// </summary>
+        /// <param name="env">Envelope level in Dbs</param>
+        /// <param name="t">Threshold level in Dbs</param>
+        /// <param name="w">Knee width level in Dbs</param>
+        /// <returns>Is the env above the threshold or inside the knee or not</returns>
+        public static bool DetectEnvExceed(double env, double t, double w) => !(2 * (env - t) < -w);
     }
 }

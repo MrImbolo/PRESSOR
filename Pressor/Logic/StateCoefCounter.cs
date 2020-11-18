@@ -10,6 +10,13 @@ namespace Pressor.Logic
         private double SampleRate => _pp.SampleRate;
         public ECompState State = ECompState.Bypass;
 
+        public double StateAlpha => State switch
+        {
+            ECompState.Attack => 0.63,
+            ECompState.Release => 0.37,
+            _ => 0.5
+        };
+
         public StateHandler(PressorParameters pp, PressorState ps)
         {
             _pp = pp;
@@ -46,52 +53,53 @@ namespace Pressor.Logic
         {
             if (State == ECompState.Attack)
             {
-                if (_ps.TempGRDb != 0)
+                if (_ps.Da < _pp.Ta)
                 {
-                    if (_ps.Da < _pp.Ta)
-                    {
-                        _ps.Da++;
-                    }
-                    else
-                    {
-                        SetCompressingState();
-                    }
+                    _ps.Da++;
                 }
                 else
                 {
-                    SetMomentaryReleaseState();
+                    SetReleaseState();
                 }
+                //if (_ps.IsExceeded)
+                //{
+                //}
+                //else
+                //{
+                //    SetMomentaryReleaseState();
+                //}
             }
-            else if (State == ECompState.Compressing)
-            {
-                if (_ps.TempGRDb != 0)
-                    return;
+            //else if (State == ECompState.Compressing)
+            //{
+            //    if (_ps.IsExceeded)
+            //        return;
                 
-                SetReleaseState();
-            }
+            //    SetReleaseState();
+            //}
             else if (State == ECompState.Release)
             {
-                if (_ps.TempGRDb != 0)
+                //if (_ps.IsExceeded)
+                //{
+                //    SetMomentaryAttackState();
+                //}
+                //else
+                //{
+                //}
+                if (_ps.Dr > 0)
                 {
-                    SetMomentaryAttackState();
+                    _ps.Dr--;
                 }
                 else
                 {
-                    if (_ps.Dr > 0)
-                    {
-                        _ps.Dr--;
-                    }
-                    else
-                    {
-                        SetBypassState();
-                    }
+                    SetBypassState();
                 }
             }
             // consider bypass
             else if (State == ECompState.Bypass)
             {
-                if (_ps.TempGRDb == 0)
+                if (!_ps.IsExceeded)
                     return;
+
                 SetAttackState();
             }
             else 
@@ -105,7 +113,7 @@ namespace Pressor.Logic
         }
         public void SetMomentaryAttackState()
         {
-            _ps.Da = Math.Ceiling(_ps.Dr / _pp.Tr * _pp.Ta);
+            _ps.Da = 0; //Math.Ceiling(_ps.Dr / _pp.Tr * _pp.Ta);
             _ps.Dr = _pp.Tr;
             State = ECompState.Attack;
         }
@@ -131,7 +139,7 @@ namespace Pressor.Logic
 
         private void SetAttackState()
         {
-            _ps.Da++;
+            _ps.Da = 1;
             _ps.Dr = _pp.Tr;
             State = ECompState.Attack;
         }
@@ -141,14 +149,13 @@ namespace Pressor.Logic
         /// </summary>
         internal void CountGRDb()
         {
-            var temp = (State == ECompState.Bypass)
-                ? 0
-                : CountStateGR();
-            _ps.GRDb = PressorMath.OPFilter(0.63, temp, _ps.GRDb);
-            // Count gain reduction multiplying gain reduction in dbs to tau function argument
-            _ps.GR = DBFSConvert.DbToLin(-(_ps.GRDb * _ps.Tf));
+            _ps.TempGRDb = (_ps.IsExceeded) ? PressorCalc.GR(_ps.EnvDb, _pp.T, _pp.R, _pp.W) : _ps.GRDb;
+
+            _ps.GRDb = PressorCalc.OPFilter(StateAlpha, _ps.TempGRDb * _ps.Tf, _ps.GRDb);
+                
+            _ps.GR = DBFSConvert.DbToLin(-_ps.GRDb);
+            
         }
-        private double CountStateGR() => (_ps.TempGRDb > _ps.GRDb) ? _ps.Tf * _ps.TempGRDb : _ps.GRDb * _ps.Tf;
     }
     
 }
