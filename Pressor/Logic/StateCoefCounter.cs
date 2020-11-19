@@ -128,11 +128,11 @@ namespace Pressor.Logic
         /// </summary>
         internal void CountGRDb()
         {
-            _ps.TempYDb = PressorCalc.YDb(_ps.EnvDb, _pp.T, _pp.R, _pp.W);
+            _ps.TempYDb = PressorCalc.YG(_ps.EnvDb, _pp.T, _pp.R, _pp.W);
 
-            _ps.YDb = _ps.TempYDb;
+            _ps.YG = _ps.TempYDb;
             
-            _ps.Y = PressorCalc.OPFilter(_ps.Tf, Math.CopySign(DBFSConvert.DbToLin(_ps.YDb), _ps.X), _ps.X);
+            _ps.Y = PressorCalc.OPFilter(_ps.Tf, Math.CopySign(DBFSConvert.DbToLin(_ps.YG), _ps.X), _ps.X);
         }
     }
     

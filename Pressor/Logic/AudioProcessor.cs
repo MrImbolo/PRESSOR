@@ -53,6 +53,7 @@ namespace Pressor.Logic
 
             if (inChannels.IsEmpty())
             {
+                _pressor.EmptyBuffer();
                 return;
             }
 

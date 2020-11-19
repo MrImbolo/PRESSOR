@@ -13,7 +13,7 @@ namespace Pressor.Logic
             for (int i = 0; i < buffer.SampleCount; i++)
                 lvls[i] = Math.Abs(buffer[i]);
 
-            return lvls.Average();
+            return lvls.Average(x => Math.Abs(x));
         }
     }
 }

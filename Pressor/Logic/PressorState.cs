@@ -37,17 +37,17 @@ namespace Pressor.Logic
         /// <summary>
         /// Last output value
         /// </summary>
-        public double LastY { get; set; }
+        public double LastYL { get; set; }
 
         /// <summary>
-        /// Average envelope level till now
+        /// Average envelope - always positive
         /// </summary>
-        public double Env { get; set; }
+        public double XG { get; set; }
 
         /// <summary>
         /// Gain reduction absolute
         /// </summary>
-        public double GR { get; set; } = 1.0;
+        public double CDb { get; set; } = 1.0;
 
         /// <summary>
         /// Inbetween Y value in db
@@ -57,7 +57,7 @@ namespace Pressor.Logic
         /// <summary>
         /// Y in dBs
         /// </summary>
-        public double YDb { get; set; }
+        public double YG { get; set; }
 
         /// <summary>
         /// Tau-coefficient for current compressor state
@@ -68,5 +68,8 @@ namespace Pressor.Logic
         /// Envelope exceedence flag
         /// </summary>
         public bool IsExceeded { get; set; }
+        public double  XL { get; internal set; }
+        public double YL { get; internal set; }
+        public double C { get; internal set; }
     }
 }

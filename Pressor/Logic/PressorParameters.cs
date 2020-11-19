@@ -175,7 +175,7 @@ namespace Pressor.Logic
             if (e.PropertyName == nameof(VstParameterManager.CurrentValue))
             {
                 var paramMgr = (VstParameterManager)sender;
-                Ta = Math.Round(paramMgr.CurrentValue, 0) / 1000 * SampleRate;
+                Ta = Math.Round(paramMgr.CurrentValue, 0);
             }
         }
         private void ReleaseManager_PropertyChanged(object sender, PropertyChangedEventArgs e)
@@ -183,7 +183,7 @@ namespace Pressor.Logic
             if (e.PropertyName == nameof(VstParameterManager.CurrentValue))
             {
                 var paramMgr = (VstParameterManager)sender;
-                Tr = Math.Round(paramMgr.CurrentValue, 0) / 1000 * SampleRate;
+                Tr = Math.Round(paramMgr.CurrentValue, 0);
             }
         }
         private void KneeManager_PropertyChanged(object sender, PropertyChangedEventArgs e)
@@ -230,7 +230,7 @@ namespace Pressor.Logic
         public double W;
 
         /// <summary>
-        /// Pressor MakeUp Gain Width in dbs
+        /// Pressor MakeUp Gain in dbs
         /// </summary>
         public double M;
 
@@ -238,6 +238,9 @@ namespace Pressor.Logic
         /// Project's sample rate
         /// </summary>
         public double SampleRate;
+
+        public double AlphaA => Math.Exp(-1 / (0.001 * Ta * SampleRate));
+        public double AlphaR => Math.Exp(-1 / (0.001 * Tr * SampleRate));
 
         public VstParameterInfoCollection Parameters { get => _parameters; set => _parameters = value; }
     }

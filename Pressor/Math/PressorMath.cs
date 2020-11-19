@@ -44,7 +44,7 @@ namespace Pressor.Calculations
         /// <param name="r"></param>
         /// <param name="w"></param>
         /// <returns></returns>
-        public static double YDb(double env, double t, double r, double w)
+        public static double YG(double env, double t, double r, double w)
         {
             if (2 * (env - t) < -w)
             {

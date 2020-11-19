@@ -68,6 +68,7 @@ namespace Pressor.Logic
 
         private PressorState[] _pressorStates;
 
+
         /// <summary>
         /// Constructs pressor and initializes it's params depending on incomping channels number
         /// </summary>
@@ -99,40 +100,48 @@ namespace Pressor.Logic
 
             _currentChannel = currentChannel;
 
-            if (PS.Env == 0)
-                PS.Env = inBuffer.AvgEnv();
-
-            if (PS.LastY == 0)
-                PS.LastY = PS.Env;
 
             for (var i = 0; i < inBuffer.SampleCount; i++)
             {
                 PS.X = inBuffer[i];
 
-                // Count average envelope lvl
-                PS.Env = PressorCalc.EnvFunc(Math.Abs(PS.X), PS.Env);
+                PS.X = (PS.X == 0) ? 0.0000000001 : PS.X;
 
-                // Convert absolute average envelope lvl to db scale
-                PS.EnvDb = DBFSConvert.LinToDb(PS.Env);
+                PS.XG = DBFSConvert.LinToDb(Math.Abs(PS.X));
 
-                // Count momentary gain reduction in dbs 
-                PS.IsExceeded = PressorCalc.DetectEnvExceed(PS.EnvDb, PP.T, PP.W);
-                
-                // Count tau function argument from current state using state machine
-                SH.CountTf();
+                PS.YG = PressorCalc.YG(PS.XG, PP.T, PP.R, PP.W);
 
-                // Count GRDb according to stage
-                SH.CountGRDb();
+                PS.XL = PS.XG - PS.YG;
 
-                //// Count final sample through smoothing filter with respect of last final sample value
-                //PS.Y = (float)(PressorCalc.OPFilter(0.5, PS.X * PS.GR, PS.LastY) / DBFSConvert.DbToLin(-PP.M));
-                PS.LastY = PS.Y;
+                if (PS.XL > PS.LastYL)
+                    PS.YL = PP.AlphaA * PS.LastYL + (1 - PP.AlphaA) * PS.XL;
+                else
+                    PS.YL = PP.AlphaR * PS.LastYL + (1 - PP.AlphaR) * PS.XL;
+
+                if (double.IsNaN(PS.YL))
+                    Debug.WriteLine($"{nameof(PS.YL)} is {PS.YL}");
+
+                PS.CDb = -PS.YL;
+                PS.C = DBFSConvert.DbToLin(PS.CDb - PP.M);
+
+                PS.Y = PS.X * PS.C;
+                PS.LastYL = PS.YL;
 
                 outBuffer[i] = (float)PS.Y;
 
                 WriteDebugListsInfo();
             }
         }
+
+
+        internal void EmptyBuffer()
+        {
+            foreach (var state in _pressorStates)
+            {
+                state.LastYL = 0;
+            }
+        }
+
         private string Stringify4Log(params (string, object)[] args)
         {
             StringBuilder log = new StringBuilder();
@@ -163,7 +172,7 @@ namespace Pressor.Logic
         {
 
 #if DEBUG
-            _envs.Add(PS.Env);
+            _envs.Add(PS.XG);
             _inputs.Add(PS.X);
             _outputs.Add(PS.Y);
             _tfs.Add(PS.Tf);
@@ -171,7 +180,7 @@ namespace Pressor.Logic
 
             _thresholds.Add(PP.T); 
             _dbEnvs.Add(PS.EnvDb);
-            _ydbs.Add(PS.YDb);
+            _ydbs.Add(PS.YG);
 
 
             //if (double.IsNaN(PS.Y))
