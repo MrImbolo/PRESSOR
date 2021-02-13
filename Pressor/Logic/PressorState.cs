@@ -9,67 +9,58 @@ namespace Pressor.Logic
     public class PressorState
     {
         /// <summary>
-        /// Current sample intial absolute value
+        /// Initial sample or offset if zero
+        /// <para>Linear Domain: -1...-0.001 ; 0.001...1</para>
         /// </summary>
-        public double X { get; internal set; } = 0;
-        
-        /// <summary>
-        /// Current sample final absolute value
-        /// </summary>
-        public double Y { get; internal set; }
-        
+        public double X;
 
         /// <summary>
-        /// Current envelope in dbs
+        /// Final sample
+        /// <para>Linear Domain: -1...-0.001 ; 0.001...1</para>
         /// </summary>
-        public double EnvDb { get; internal set; }
+        public double Y;
 
         /// <summary>
-        /// Delta of the attack
+        /// Control voltage aka Gain Reduction adjusted with MakeupGain and linearized
+        /// <para>Linear Domain: -1...1</para>
         /// </summary>
-        public double Da { get; set; }
+        public double C;
 
         /// <summary>
-        /// Delta of the release
+        /// Gain of X
+        /// <para>Log Domain: -120db ... 0db</para>
         /// </summary>
-        public double Dr { get; set; }
+        public double XG;
 
         /// <summary>
-        /// Last output value
+        /// Gain of Y, found by gain processor
+        /// <para>Log Domain: -120db ... 0db</para>
         /// </summary>
-        public double LastYL { get; set; }
+        public double YG;
 
         /// <summary>
-        /// Average envelope - always positive
+        /// Control voltage aka Gain Reduction
+        /// <para>Log Domain: -120db ... 0db</para>
         /// </summary>
-        public double XG { get; set; }
+        public double CDb;
+
 
         /// <summary>
-        /// Gain reduction absolute
+        /// Level of X found by gain processor
+        /// <para>Log Domain: 0+db</para>
         /// </summary>
-        public double CDb { get; set; } = 1.0;
+        public double XL;
 
         /// <summary>
-        /// Inbetween Y value in db
+        /// Level of Y found by detector
+        /// <para>Log Domain: 0+db</para>
         /// </summary>
-        public double TempYDb { get; set; }
+        public double YL;
 
         /// <summary>
-        /// Y in dBs
+        /// Beffered YL [n-1]
+        /// <para>Log Domain: 0+db</para>
         /// </summary>
-        public double YG { get; set; }
-
-        /// <summary>
-        /// Tau-coefficient for current compressor state
-        /// </summary>
-        public double Tf { get; set; }
-
-        /// <summary>
-        /// Envelope exceedence flag
-        /// </summary>
-        public bool IsExceeded { get; set; }
-        public double  XL { get; internal set; }
-        public double YL { get; internal set; }
-        public double C { get; internal set; }
+        public double LastYL;
     }
 }

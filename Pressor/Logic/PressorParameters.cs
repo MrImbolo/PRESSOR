@@ -14,10 +14,9 @@ namespace Pressor.Logic
         private readonly VstParameterManager _kneeMgr;
         private readonly VstParameterManager _makeupMgr;
 
-        private VstParameterInfoCollection _parameters;
         public PressorParameters() 
         {
-            _parameters = new VstParameterInfoCollection();
+            Parameters = new VstParameterInfoCollection();
 
             #region params
 
@@ -26,15 +25,15 @@ namespace Pressor.Logic
                 CanBeAutomated = true,
                 Name = "Thrshld",
                 Label = "Threshold",
-                ShortLabel = "lin2dbs",
+                ShortLabel = "-db",
                 MinInteger = 0,
                 MaxInteger = 60,
                 SmallStepFloat = 0.1f,
                 StepFloat = 1f,
                 LargeStepFloat = 3f,
-                DefaultValue = -6,
+                DefaultValue = 12,
             };
-            _parameters.Add(threshInfo);
+            Parameters.Add(threshInfo);
 
 
             var ratInfo = new VstParameterInfo
@@ -42,14 +41,14 @@ namespace Pressor.Logic
                 CanBeAutomated = true,
                 Name = "Ratio",
                 Label = "Ratio",
-                ShortLabel = ":1",
+                ShortLabel = ": 1",
                 MinInteger = 1,
                 MaxInteger = 60,
                 StepInteger = 1,
                 LargeStepInteger = 3,
                 DefaultValue = 4f,
             };
-            _parameters.Add(ratInfo);
+            Parameters.Add(ratInfo);
 
 
             var attInfo = new VstParameterInfo
@@ -64,7 +63,7 @@ namespace Pressor.Logic
                 LargeStepInteger = 10,
                 DefaultValue = 50f,
             };
-            _parameters.Add(attInfo);
+            Parameters.Add(attInfo);
 
             var relInfo = new VstParameterInfo
             {
@@ -80,7 +79,7 @@ namespace Pressor.Logic
                 DefaultValue = 50f,
             };
 
-            _parameters.Add(relInfo);
+            Parameters.Add(relInfo);
 
 
             var kneeInfo = new VstParameterInfo
@@ -89,14 +88,14 @@ namespace Pressor.Logic
                 CanRamp = true,
                 Name = "Knee",
                 Label = "Knee",
-                ShortLabel = "db to db",
+                ShortLabel = "",
                 MinInteger = 0,
                 MaxInteger = 10,
                 StepInteger = 1,
                 LargeStepInteger = 1,
-                DefaultValue = 1,
+                DefaultValue = 0,
             };
-            _parameters.Add(kneeInfo);
+            Parameters.Add(kneeInfo);
 
             var mGainInfo = new VstParameterInfo
             {
@@ -104,23 +103,23 @@ namespace Pressor.Logic
                 CanRamp = true,
                 Name = "MkGain",
                 Label = "MakeUpGain",
-                ShortLabel = "dbs",
+                ShortLabel = "db",
                 MinInteger = 0,
                 MaxInteger = 60,
                 StepInteger = 1,
                 LargeStepInteger = 1,
                 DefaultValue = 0,
             };
-            _parameters.Add(mGainInfo);
+            Parameters.Add(mGainInfo);
 
             #endregion
 
-            _thresholdMgr = _parameters.ElementAt(0).Normalize().ToManager();
-            _ratioMgr = _parameters.ElementAt(1).Normalize().ToManager();
-            _attackMgr = _parameters.ElementAt(2).Normalize().ToManager();
-            _releaseMgr = _parameters.ElementAt(3).Normalize().ToManager();
-            _kneeMgr = _parameters.ElementAt(4).Normalize().ToManager();
-            _makeupMgr = _parameters.ElementAt(5).Normalize().ToManager();
+            _thresholdMgr = Parameters.ElementAt(0).Normalize().ToManager();
+            _ratioMgr = Parameters.ElementAt(1).Normalize().ToManager();
+            _attackMgr = Parameters.ElementAt(2).Normalize().ToManager();
+            _releaseMgr = Parameters.ElementAt(3).Normalize().ToManager();
+            _kneeMgr = Parameters.ElementAt(4).Normalize().ToManager();
+            _makeupMgr = Parameters.ElementAt(5).Normalize().ToManager();
 
             SetUpInitialValues();
 
@@ -205,43 +204,60 @@ namespace Pressor.Logic
         #endregion
 
         /// <summary>
-        /// Lin value of db based Threshold scale
+        /// Threshold
+        /// <para>Log domain: -120db...0db</para>
         /// </summary>
         public double T;
 
         /// <summary>
-        /// Dbs to Db units Ratio scale
+        /// Ratio
+        /// <para>Linear domain: 0...60</para>
         /// </summary>
         public double R;
 
         /// <summary>
-        /// Attack in sample units
+        /// Attack in ms
+        /// <para>Linear domain: 1...1000</para>
         /// </summary>
         public double Ta;
 
         /// <summary>
-        /// Release in sample units
+        /// Release in ms
+        /// <para>Linear domain: 1...1000</para>
         /// </summary>
         public double Tr;
 
         /// <summary>
-        /// Cimpressor curve knee in dBs
+        /// Knee Width
+        /// <para>Log domain: 0db...10db</para>
         /// </summary>
         public double W;
 
         /// <summary>
-        /// Pressor MakeUp Gain in dbs
+        /// MakeUp Gain
+        /// <para>Log domain: 0db...60db</para>
         /// </summary>
         public double M;
 
         /// <summary>
         /// Project's sample rate
+        /// <para>Linear domain: 44100+</para>
         /// </summary>
         public double SampleRate;
 
+        /// <summary>
+        /// Alpha coefficient for the attack time
+        /// <para>a = e ^ -1 / (Ta * f)</para>
+        /// </summary>
         public double AlphaA => Math.Exp(-1 / (0.001 * Ta * SampleRate));
+
+
+        /// <summary>
+        /// Alpha coefficient for the release time
+        /// <para>a = e ^ -1 / (Tr * f)</para>
+        /// </summary>
         public double AlphaR => Math.Exp(-1 / (0.001 * Tr * SampleRate));
 
-        public VstParameterInfoCollection Parameters { get => _parameters; set => _parameters = value; }
+        public VstParameterInfoCollection Parameters { get; set; }
     }
 }
