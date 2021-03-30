@@ -19,9 +19,9 @@ namespace Pressor.Logic
 
 
         /// <summary>
-        /// Constructs a new instance.
+        /// Constructs a new instance of AudioProcessor class.
         /// </summary>
-        /// <param name="plugin">Must not be null.</param>
+        /// <param name="plugin">Injected by service injector in Plugin.cs</param>
         public AudioProcessor(Plugin plugin)
             : base(2, 2, 0, noSoundInStop: true)
         {

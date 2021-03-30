@@ -15,7 +15,7 @@ namespace Pressor.VST
 
         public Plugin() 
             : base("Pressor - thesis sample comp", new FourCharacterCode("PRSR").ToInt32(), 
-                  new VstProductInfo("Sound Engineering Thesis", "@MrImbolo aka Daniel Zotov @ 2020", 1001), 
+                  new VstProductInfo("Sound Engineering Thesis VST Compressor", "@MrImbolo aka Daniel Zotov @ 2020", 1002), 
                   VstPluginCategory.Mastering)
         {
             ParameterFactory = new PluginParameterFactory();
